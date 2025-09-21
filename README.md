@@ -1,16 +1,19 @@
 # The Watt-iz Speech Enabled Project
 
 ## Hardware Description
-The Watt-IZ project hardware is packaged on a 100mm x 60mm 1.6mm PCB. See PCB section for details. The
-folowing describes the hardware capabilities.
+The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. See PCB section for details. The
+folowing describes the hardware capabilities of each major section.
 
 ### Micro Controller Unit (MCU) 
 The system is based on the Expressif ESP32-S3 Wroom-1-N16R8 System On Chip (SOC). The variant used in this
 design contains 16MB of flash program storage and 8MB of pseudo-static RAM as well as 384Kbytes of SRAM. 
-The many features of this SOC can be found [here:]https://products.espressif.com/#/product-selector?names=&filter=%7B%22Series%22%3A%5B%22ESP32-S3%22%5D%7D
+The ESP32 is a dual core 32 bit microprocessor running at 240 Mhz. The -S3 variant also has some DSP functions to
+accelerate FFT's, perform audio filtering, and array processing.
 
-The SOC has WiFi and bluetooth connectivity as well as it's own ESP-NOW communication which does not require a 
-router or internet connection to operate.
+The SOC features WiFi and bluetooth connectivity as well as it's own ESP-NOW proprietary communication which does 
+not require a router or internet connection to communicate.
+
+The many features of this SOC can be found [here:]https://products.espressif.com/#/product-selector?names=&filter=%7B%22Series%22%3A%5B%22ESP32-S3%22%5D%7D
 
 ### Development USB Port
 Connection to a development system is done via a micro-USB connector. The board can be powered from this connection
