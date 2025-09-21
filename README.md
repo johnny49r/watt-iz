@@ -23,14 +23,14 @@ programs compiled in the IDE can be downloaded to the MCU. Download is automatic
 
 ### Power Input
 The board is designed to operate from a standard USB-C port. A typical 5V @ 2A AC adapter can be used to power the board.
-Additionally the board can be powered from a single Lithium-Ion 3.7V battery. The battery is connected to the board via
-a two pin header located next to the USB-C connector. Note the board has reverse polarity protection in case the battery 
-is reversed.
-A 900 mA charger circuit is provided to charge the battery when the AC adapter is powering the board. LED charge status 
-LED indicates charging (or full). Power ON/OFF switch is on the front edge of the board.
-The battery voltage and charge current are exposed to the MCU for applications requiring power monitoring.
+Additionally the board can be powered from a single Lithium-Ion 3.7V battery. Recommended battery capacity is 2000 mAH.
+The battery is connected to the board via a two pin header located next to the USB-C connector. Note the board has 
+reverse polarity protection in case the battery is reversed.
+A 900 mA charger circuit is provided to charge the battery when the AC adapter is powering the board. Charge status 
+LED indicates charging (or full). Power ON/OFF switch is located on the front edge of the board.
+The battery voltage and charge current are exposed to the MCU's ADC for applications requiring power monitoring.
 
-High efficiency switching regulators provided precise voltage and best battery life.
+High efficiency switching regulators provide precise voltage and maximum battery life.
 
 ### Real Time Clock 
 The board contains a real-time clock chip which is backed up by a CR2032 coin cell. The batter life is calculated to be 
