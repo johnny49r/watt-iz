@@ -60,3 +60,4 @@ The microphone is mounted directly to the PCB and provides quality audio for rec
 A NEOPIXEL WS2812B provides a full 24 bit color spectrum. 
 
 ## MIT License
+The software examples are free for use, modification, and distribution. See the LICENSE.MD for details.
