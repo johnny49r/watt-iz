@@ -1,4 +1,4 @@
-# The Watt-iz Project
+# The Watt-iz Speech Enabled Project
 
 ## Hardware Description
 The Watt-IZ project hardware is packaged on a 100mm x 60mm 1.6mm PCB. See PCB section for details. The
@@ -14,10 +14,9 @@ router or internet connection to operate.
 
 ### Development USB Port
 Connection to a development system is done via a micro-USB connector. The board can be powered from this connection
-so no other power input is required for normal operation.
+so no other power input is required for development operation.
 The board features a CH340-C USB-UART converter chip so debug information can be passed to the development system and
-programs compiled in the IDE can be downloaded to the MCU.
-Automatic downloading does not require the use of RESET & BOOT buttons.
+programs compiled in the IDE can be downloaded to the MCU. Download is automatic - no boot button required.
 
 ### Power Input
 The board is designed to operate from a standard USB-C port. A typical 5V @ 2A AC adapter can be used to power the board.
@@ -35,14 +34,15 @@ The board contains a real-time clock chip which is backed up by a CR2032 coin ce
 at least 2 years when no power is applied to the board.
 Date and time are kept by the RTC chip as well as alarm functionality. The RTC can be programmed manually or via internet 
 (see examples).
+The RTC chip also provides substrate temperature (board temperature) in degrees C.
 
 ### SD Card Memory
-The board has a SD card slot which uses a SDHC or SDXC card. The SD interface in 4-bit MMC for maximum performance. 
-Large capacity cards (up to 256 GB) are supported as long as they are formatted with FAT32. Standard cards used are SDHC 
-32 GB class 10.
+The board has a micro-SD card slot which uses a SDHC or SDXC card. The SD interface in 4-bit MMC for maximum performance. 
+Large capacity cards (up to 256 GB) are supported as long as they are formatted with FAT32. The standard card used is an
+SDHC 32 GB class 10. 
 
 ### 2.8" TFT Touch Screen Display
-The hardware supports common 2.8" TFT screens with the ILI9341 controller with SPI interface.
+The hardware supports a 2.8" TFT screen using the ILI9341 graphics controller with SPI interface.
 The hardware supports either resistive touch screen or capacitive touch screens. Capacitive touch is more sensitive 
 and provides smoother operation but does not work with a stylus. 
 Screen brightness can be controlled from 0 to 100% (60 ma backlight current).
@@ -57,7 +57,8 @@ audio amplifier (MAX-98357) used to drive a 4 ohm speaker.
 The microphone is mounted directly to the PCB and provides quality audio for recording or speech transcription. 
 
 ### NEOPIXEL Status LED
-A NEOPIXEL WS2812B provides a full 24 bit color spectrum. 
+A WS2812B multicolor status LED provides a full 24 bit color spectrum and variable intensity.
 
 ## MIT License
-The software examples are free for use, modification, and distribution. See the LICENSE.MD for details.
+The software examples are free for use, modification, and distribution. See the LICENSE file for details. For commercial use
+I only request an acknowledgement of the source. John F Hoeppner, Watt-IZ, Abbycus 2025.
