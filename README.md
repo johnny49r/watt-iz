@@ -28,27 +28,28 @@ The battery is connected to the board via a two pin header located next to the U
 reverse polarity protection in case the battery is reversed.
 A 900 mA charger circuit is provided to charge the battery when the AC adapter is powering the board. Charge status 
 LED indicates charging (or full). Power ON/OFF switch is located on the front edge of the board.
-The battery voltage and charge current are exposed to the MCU's ADC for applications requiring power monitoring.
+The battery voltage and charge current are exposed to the MCU's ADC for applications requiring power monitoring, 
+battery State Of Charge, and Time To Charge information.
 
 High efficiency switching regulators provide precise voltage and maximum battery life.
 
 ### Real Time Clock 
-The board contains a real-time clock chip which is backed up by a CR2032 coin cell. The batter life is calculated to be 
-at least 2 years when no power is applied to the board.
+The board contains a real-time clock chip (DS3231) which is backed up by a CR2032 coin cell. The batter life is at least 
+2 years when no power is applied to the board.
 Date and time are kept by the RTC chip as well as alarm functionality. The RTC can be programmed manually or via internet 
 (see examples).
 The RTC chip also provides substrate temperature (board temperature) in degrees C.
 
 ### SD Card Memory
 The board has a micro-SD card slot which uses a SDHC or SDXC card. The SD interface in 4-bit MMC for maximum performance. 
-Large capacity cards (up to 256 GB) are supported as long as they are formatted with FAT32. The standard card used is an
+Large capacity cards (up to 256 GB) are supported as long as they are formatted with FAT32. The recommended card is an
 SDHC 32 GB class 10. 
 
 ### 2.8" TFT Touch Screen Display
 The hardware supports a 2.8" TFT screen using the ILI9341 graphics controller with SPI interface.
 The hardware supports either resistive touch screen or capacitive touch screens. Capacitive touch is more sensitive 
 and provides smoother operation but does not work with a stylus. 
-Screen brightness can be controlled from 0 to 100% (60 ma backlight current).
+Screen brightness can be controlled using PWM (see examples).
 
 ### Wake From Deep Sleep
 The board features a 'Wake' button which can be used as a general purpose button or as a Wake from deep sleep button.
