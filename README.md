@@ -1,1 +1,3 @@
-# watt-iz
+# The Watt-iz Project
+
+## MIT License
