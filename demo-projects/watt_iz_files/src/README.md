@@ -11,8 +11,9 @@ Folders & files on the SD card will be displayed on the LCD display using the LV
 
 ## Speed Test
 A simple speed test can be used to benchmark relative performance of the SD card in the ESP32 environment.
-Transfer speeds are measured by writing and reading 1024 byte blocks for a total of 1MB transfered. 
-Measured times for each block are averaged and displayed after the test has completed.
+Transfer speeds are measured by sequentially writing a 1MB file and reading random 16K byte blocks in 
+that file for a total of 1MB transfered. Measured times for each block are averaged and displayed after 
+the test has completed.
 
 ## SD Card Formatter
 Format the SD card with the FAT32 format. ***WARNING*** - all files will be erased!
