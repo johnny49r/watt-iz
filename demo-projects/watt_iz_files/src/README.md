@@ -1,15 +1,9 @@
 # Watt-IZ 'FILES DEMO' Project
 
 This example project for the Abbycus Watt-IZ Speech enabled ESP32-S3 development board demonstrates 
-features of the hardware platform. 
+a major feature of the hardware platform. 
+This project is designed to be built and uploaded to the Watt-IZ target hardware. Requirements:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. @Abbycus 2025
 
 ## Directory Display
 Folders & files on the SD card will be displayed on the LCD display using the LVGL graphics 
