@@ -20,4 +20,5 @@ The tone demo page can generate a sinewave tone from 0 to 3000 Hz. There is also
 volume control from 0 - 100% of "maximum".
 Click 'Tone ON' button to hear the selected tone and volume.
 
+## FFT Chart Page
 
