@@ -5,7 +5,8 @@ Visual Studio code editor ***(VScode)*** with the popular IDE extension ***Platf
 Install VScode and the PlatformIO IDE extension using directions here: https://platformio.org/install/ide?install=vscode.
 
 ## Copy Source from Github Repository
-
+1) Goto the watt-iz Github project https://github.com/johnny49r/watt-iz/tree/main.
+2) 
 
 ## Install Demo Project
 The Watt-IZ demo projects are organized into folders that can be dropped directly into your 
