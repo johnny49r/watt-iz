@@ -4,12 +4,12 @@ The Watt-IZ demo projects are Arduino style C++ code examples developed using th
 Visual Studio code editor ***(VScode)*** with the popular IDE extension ***PlatformIO***.
 Install VScode and the PlatformIO IDE extension using directions here: https://platformio.org/install/ide?install=vscode.
 
-## Copy Project Source from Github Repository
+## Copy Project Source (Repository) from Github
 ### Option Using Git Clone
 1) Open a terminal and navigate to a project folder where you want the project to be copied.
 2) In the terminal type: *git clone https://github.com/johnny49r/watt-iz.git*.
 
-### Option B Download Project ZIP File
+### Option Downloading Project ZIP File
 1) Goto the watt-iz Github project https://github.com/johnny49r/watt-iz/tree/main.
 2) Click on the green **<> Code** button and select **Download ZIP**.
 3) Extract the ZIP file into your project folder.
@@ -19,8 +19,8 @@ In VScode, click **File->Open Folder**. Choose the project folder. This gives yo
 of all subfolders, but PlatformIO won’t yet treat them as projects.
 1) Then click **File->Add Folder to Workspace**.
 2) Select **/watt_iz_???/** (the project folder that has its platformio.ini).
-3) Repeat for the next project, etc.
-4) Save this setup: **File->Save Workspace As ... watt_iz.code-workspace in the repo root.
+3) Repeat for the remaining projects you wish to use.
+4) Save this setup: **File->Save Workspace As... watt_iz.code-workspace in the repo root.
 
 ## Install A Demo Project in PlatformIO
 The Watt-IZ demo projects are organized into individual folders that can be compiled 
@@ -33,10 +33,11 @@ and run. Perform the following steps to add a project:
 - It will appear in the Explorer and you’ll get build/upload/debug options in the toolbar.
 
 ## Install Project Specific Configuration Files
-When a project has been successfully installed, platformIO will install the dependent libraries 
+When a demo project has been successfully installed, platformIO will install the dependent libraries 
 listed in ***platformio.ini***. This action generates default configuration files which will cause 
 compile errors and run-time issues. Correct configuration files (supplied in the 
 ***common_files*** folder) need to be copied to the project. Perform the following steps:
+
 1) Copy the file ***conf.h*** from the ***common_files/lvgl*** folder to the project folder
 ***<project>/.pio/libdeps/esp32-s3-devkitc-1/lvgl***.
 2) Copy the file ***User_Setup.h*** from the ***common_files/tft_espi*** folder to the project folder
