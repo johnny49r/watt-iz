@@ -7,28 +7,28 @@ Install VScode and the PlatformIO IDE extension using directions here: https://p
 ## Copy Project Source (Repository) from Github
 ### Option Using Git Clone
 1) Open a terminal and navigate to a project folder where you want the project to be copied.
-2) In the terminal type: *git clone https://github.com/johnny49r/watt-iz.git*.
+2) In the terminal type: ***git clone https://github.com/johnny49r/watt-iz.git***.
 
 ### Option Downloading Project ZIP File
 1) Goto the watt-iz Github project https://github.com/johnny49r/watt-iz/tree/main.
 2) Click on the green **<> Code** button and select **Download ZIP**.
-3) Extract the ZIP file into your project folder.
+3) Extract the ZIP file into your designated project folder.
 
 ## Install Project To VScode.
 In VScode, click **File->Open Folder**. Choose the project folder. This gives you visibility 
-of all subfolders, but PlatformIO won’t yet treat them as projects.
+of all subfolders, but PlatformIO won’t yet treat them as individual projects.
 1) Then click **File->Add Folder to Workspace**.
-2) Select **/watt_iz_???/** (the project folder that has its platformio.ini).
+2) Select a demo project **/watt_iz_???/** (the project folder that has its platformio.ini).
 3) Repeat for the remaining projects you wish to use.
-4) Save this setup: **File->Save Workspace As... watt_iz.code-workspace in the repo root.
+4) Save this setup: **File->Save Workspace As...** watt_iz.code-workspace in the repo root.
 
 ## Install A Demo Project in PlatformIO
 The Watt-IZ demo projects are organized into individual folders that can be compiled 
-and run. Perform the following steps to add a project:
+and run. Perform the following steps to add a demo project:
 1) In VSCode, go to the PlatformIO Home (alien icon in the sidebar) and choose **Projects**.
 2) Select **Open Project**.
-3) Navigate to the existing project folder (the one containing platformio.ini).
-4) Click Open.
+3) Navigate to the existing project folder (the one containing ***platformio.ini***).
+4) Click **Open**.
 - PlatformIO will automatically recognize it as a project.
 - It will appear in the Explorer and you’ll get build/upload/debug options in the toolbar.
 
