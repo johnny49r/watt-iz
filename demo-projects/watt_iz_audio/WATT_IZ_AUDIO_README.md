@@ -16,7 +16,7 @@ using a I2S digital serial interface. Best performance is had using a 4-Ohm
 miniature speaker. Datasheet can be seen [here:] https://www.analog.com/media/en/technical-documentation/data-sheets/max98357a-max98357b.pdf .
 
 ## Tone Demo Page
-The tone demo page can generate a sinewave tone from 0 to 3000 Hz. There is also a 
+The tone demo page can generate a sinewave tone from 100 to 3000 Hz. There is also a 
 volume control from 0 - 100% of "maximum".
 Click 'Tone ON' button to hear the selected tone and volume.
 
