@@ -1,10 +1,10 @@
 # Watt-IZ Graphics Demo Project
 The goal of this project is to demonstrate the features and capabilities of the
-Watt-IZ Speech Enabled Development Board. A graphical user interface (GUI) is 
+Watt-IZ Speech Enabled Development Board. A graphical user interface (GUI) can be 
 built using the following two graphics libraries:
-- TFT_eSPI handles the low level functions such as drawing, refresh, touch screen
+- **TFT_eSPI** handles the low level functions such as drawing, refresh, touch screen
   detection, and many other behind-the-scenes functions.
-- LVGL (Light and Versatile Graphics Library) is built on top of the TFT_eSPI
+- **LVGL** (Light and Versatile Graphics Library) is built on top of the TFT_eSPI
   library and provides graphical widgets to build a user friendly GUI.
 
 Initialization of these two libraries can be found in ***gui.cpp*** in the function
