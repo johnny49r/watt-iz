@@ -14,8 +14,13 @@ that this function allocates two drawing buffers in PSRAM which significantly re
 the use of SRAM. A small *dma_linebuf* is created in SRAM to speed up drawing.
 
 ## Hardware Requirements
-- Working Watt-IZ board version 1.2 or higher.
+- Working Watt-IZ board revision 1.2 or higher.
 - Functional 2.8" LCD with either capacitive or resistive touch screen.
+
+## Page 1: Home Screen
+This page demonstrates how to declare and display an image. The source image (.PNG file) 
+was converted to a **.c** array using the online LVGL Image Converter 
+[here:] https://lvgl.io/tools/imageconverter.
 
 ## Page 2: Display of Miscellaneous Graphic Widgets
 This page displays several graphic widgets such as buttons, switches, sliders, and
