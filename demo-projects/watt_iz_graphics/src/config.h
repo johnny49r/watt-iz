@@ -41,7 +41,7 @@
 //###################################################################
 // ENABLE SPEECH SERVICES
 //###################################################################
-#define USE_CHAT_GPT_SERVICE        1
+// #define USE_CHAT_GPT_SERVICE        1
 // #define USE_SPEECH_TO_TEXT_SERVICE  1
 // #define USE_TEXT_TO_SPEECH_SERVICE  1
 
@@ -50,8 +50,8 @@
 // GPIO ASSIGNMENTS 
 //###################################################################
 // #define BOARD_VER_1_1                  1
-#define BOARD_VER_1_2                   1
-//#define BOARD_VER_1_3                   1
+//#define BOARD_VER_1_2                   1
+#define BOARD_VER_1_3                   1
 
 // Pin assignments for PCB version 1.1
 #if defined (BOARD_VER_1_1)
