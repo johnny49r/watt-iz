@@ -1,16 +1,17 @@
 # Watt-IZ Graphics Demo Project
 The goal of this project is to demonstrate the features and capabilities of the
-Watt-IZ Speech Enabled Development Board. A graphical user interface (GUI) can be 
-built using the following two graphics libraries:
+Watt-IZ Speech Enabled Development Board. 
+
+A graphical user interface (GUI) can be built using the following two graphics libraries:
 - **TFT_eSPI** handles the low level functions such as drawing, refresh, touch screen
   detection, and many other behind-the-scenes functions.
 - **LVGL** (Light and Versatile Graphics Library) is built on top of the TFT_eSPI
   library and provides graphical widgets to build a user friendly GUI.
 
-Initialization of these two libraries can be found in ***gui.cpp*** in the function
-**guiInit()**. Also note that this function allocates two drawing buffers in PSRAM
-which significantly reduces the use of SRAM. A small *dma_linebuf* is created in SRAM
-to speed up drawing.
+Functions that initialization and manage these libraries can be found in ***gui.cpp***.
+See the function **guiInit()** for an example of initializing the libraries. Also note 
+that this function allocates two drawing buffers in PSRAM which significantly reduces 
+the use of SRAM. A small *dma_linebuf* is created in SRAM to speed up drawing.
 
 ## Hardware Requirements
 - Working Watt-IZ board version 1.2 or higher.
