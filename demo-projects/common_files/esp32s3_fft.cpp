@@ -66,21 +66,26 @@ fft_table_t * ESP32S3_FFT::init(uint32_t fft_size, uint32_t fft_samples, uint8_t
    // Calculate number of sliding frames
    if(_spectral_select == SPECTRAL_NO_SLIDING)
       _num_sliding_frames = _total_samples / _hop_size;
-   else
-      _num_sliding_frames = (_total_samples / _hop_size) - 1;
+   else 
+      _num_sliding_frames = 1 + ((_original_samples - _fft_size) / _hop_size);       
 
    if(_num_sliding_frames < 0) _num_sliding_frames = 0;  // avoid crash
 
-   // allocate memory in PSRAM for internal buffers
+   // allocate memory in PSRAM for internal buffers.
+   // free memory if previously allocated
    if(hann_window)
       free(hann_window);
-   hann_window = (float *) heap_caps_malloc(sizeof(float) * _fft_size, MALLOC_CAP_SPIRAM); // discrete hann window
+   hann_window = (float *) heap_caps_malloc(_fft_size * sizeof(float), MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT); // discrete hann window
+   
+   // fft buffer - internal working buffer. Aligned to 32 byte blocks.
    if(fft_buffer)
       free(fft_buffer);
-   fft_buffer = (float *) heap_caps_aligned_alloc(16, (sizeof(float) * (_fft_size * 2)) + 16, MALLOC_CAP_SPIRAM);
+   fft_buffer = (float *) heap_caps_aligned_alloc(32, ((_fft_size * 2) * sizeof(float)) + 64, MALLOC_CAP_SPIRAM);
+   
+   // fft output buffer - intermediate buffer used for averaging. Aligned to 32 byte blocks.
    if(fft_output)
       free(fft_output);
-   fft_output = (float *) heap_caps_aligned_alloc(16, sizeof(float) * _fft_size, MALLOC_CAP_SPIRAM);
+   fft_output = (float *) heap_caps_aligned_alloc(32, _fft_size * sizeof(float), MALLOC_CAP_SPIRAM);
 
    if (!hann_window || !fft_buffer || !fft_output) {  // check if memory allocated OK
       return NULL;
@@ -109,25 +114,26 @@ void ESP32S3_FFT::compute(float *source_data, float *output_data, bool use_hann_
    uint16_t frame, start, i, j;
 
    // zero the result buffer
-   memset(fft_output, 0x0, sizeof(float) * _fft_size); 
+   for(i=0; i<_fft_size; i++)
+      fft_output[i] = 0.0;
 
    // --- Sliding FFT Loop ---         
    for (frame = 0; frame < _num_sliding_frames; frame++) {
       start = frame * _hop_size;
 
-      // Multiply input * Hann window directly & save into fft_buffer's real parts    
+      // Multiply input * Hann window directly & save into fft_buffer's real parts (even nums)
       if(use_hann_window) {
-         dsps_mul_f32(&source_data[start], hann_window, fft_buffer, _fft_size, 1, 1, 2);
+         dsps_mul_f32(&source_data[start], hann_window, fft_buffer, _fft_size, 1, 1, 2); //_fft_size, 1, 1, 2);
       }
 
       // Clear imaginary parts (odd indices) for FFT calc
       for (i = 0; i < _fft_size; i++) {
          if(!use_hann_window)
-            fft_buffer[2 * i] = source_data[start + i];
-         fft_buffer[2 * i + 1] = 0.0f;
-      }   
+            fft_buffer[2 * i] = source_data[start + i];  // keep real data
+         fft_buffer[2 * i + 1] = 0.0f;    // zero out imaginary data
+      }     
 
-      // start FFT
+      // compute FFT
       dsps_fft2r_fc32(fft_buffer, _fft_size);
       dsps_bit_rev_fc32(fft_buffer, _fft_size);    
 
@@ -135,8 +141,8 @@ void ESP32S3_FFT::compute(float *source_data, float *output_data, bool use_hann_
       for (j = 0; j < _fft_size; j++) {
          float real = fft_buffer[2 * j];
          float imag = fft_buffer[2 * j + 1];
-         float mag = sqrtf(real * real + imag * imag);
-         if(_spectral_select == SPECTRAL_AVERAGE) {     // output one averaged frame
+         float mag = sqrtf(real * real + imag * imag);  // sqrt ((real sqr) + (imag sqr))
+         if(_spectral_select == SPECTRAL_AVERAGE) {     // output one averaged _hop_size
             fft_output[j] += mag;
          }
          else if(_spectral_select == SPECTRAL_NO_SLIDING || _spectral_select == SPECTRAL_SLIDING) {   // no frame averaging, output all sequential frames
@@ -163,20 +169,28 @@ void ESP32S3_FFT::compute(float *source_data, float *output_data, bool use_hann_
 void ESP32S3_FFT::end(void) 
 {
    // free memory in PSRAM used for internal buffers
-   free(hann_window);
-   hann_window = nullptr;
-   free(fft_buffer);
-   fft_buffer = nullptr;
-   free(fft_output);
-   fft_output = nullptr;
+   if(hann_window) {
+      free(hann_window);
+      hann_window = nullptr;
+   }
+
+   if(fft_buffer) {
+      free(fft_buffer);
+      fft_buffer = nullptr;
+   }
+
+   if(fft_output) {
+      free(fft_output);
+      fft_output = nullptr;
+   }
 }
 
 
 /********************************************************************
  * @brief Calculate frequency resolution for compile data points. This
  *    is analogous to the chart frequency on the X axis.
- * 
- * @note A simple but useful function.
+ * @return float frequency bin value. Example:
+ *    16000 / 1024 == 15.625 hz. Bin 10 would be 156.25 hz.
  */
 float ESP32S3_FFT::calcFreqBin(float sample_rate_hz, float fft_size)  // return freq / output data point
 {

@@ -17,8 +17,8 @@ QueueHandle_t h_QueueToneTask;               // queue command handle
 
 AUDIO::AUDIO(void)
 {
-   playWavFromSD_Stop = false;
-   playWavFromSD_Progress = -1;
+   playWavFile_Stop = false;
+   playWavFile_Progress = -1;
 }
 
 AUDIO::~AUDIO(void)
@@ -61,12 +61,22 @@ bool AUDIO::init(uint32_t sample_rate)
    h_QueueAudioRecCommand = xQueueCreate(5, sizeof(rec_command_t));    // commands to recording task
    h_QueueAudioRecStatus = xQueueCreate(5, sizeof(rec_status_t)); // status from recording task
 
+   static rec_command_t rec_cmd;
+   rec_cmd.data_dest = nullptr;
+   rec_cmd.duration_secs = 0;
+   rec_cmd.filepath = nullptr;
+   rec_cmd.filter_cutoff_freq = FILTER_CUTOFF_FREQ;
+   rec_cmd.mode = REC_MODE_IDLE;
+   rec_cmd.samples_per_frame = DEFAULT_SAMPLES_PER_FRAME;
+   rec_cmd.use_lowpass_filter = false;
+   rec_cmd.enab_vad = true;
+
    // Start background audio task running in core 0
    xTaskCreatePinnedToCore(
       taskRecordAudio,                    // Function to implement the task 
       "Recording Task",                   // Name of the task (optional)
       16384,                              // Stack size in words. What should it be? dunno but if it crashes it might be too small!
-      NULL,                               // Task input parameter struct
+      &rec_cmd,                           // Task input parameter struct
       1,                                  // Priority of the task - higher number = higher priority
       &h_taskAudioRec,                    // Task handle. 
       0);                                 // this task runs in Core 0. 
@@ -77,57 +87,99 @@ bool AUDIO::init(uint32_t sample_rate)
 
 /********************************************************************
 *  @brief Audio recording background task. Runs in core 0.
+*  @note 
+*  1) Recording control is managed by sending a 'rec_command_t'
+*  structure to the command queue.   
+*  2) Recording begins when a REC_MODE_START mode command is set in the
+*  received command struct. 
+*  3) Recording ends when the 'duration_secs' parameter 
+*  ends, or if the command REC_MODE_STOP mode command is received.
+*  4) Recording will be saved on the SD Card if the 'filepath' contains a
+*  valid path/filename string. A WAV file header is first written to the file 
+*  followed by appending frames of 16-bit audio data.
+*  5) If the data destination pointer is not NULL, a frame of data (defined 
+*  by the structure item 'samples_per_frame') is transferred to the external 
+*  memory each time a new frame is accumulated.
 */
 void taskRecordAudio(void * params)
 {
-// misc constants
-#define MIC_GAIN_FACTOR      20       // useful mic gain for playback
+#define MIC_GAIN_FACTOR      20           // normalize mic gain
+   // pointer to task params
+   rec_command_t *rec_cmd = (rec_command_t *)params;
 
-   rec_command_t rec_command;
-   rec_command.mode = REC_MODE_IDLE;
-   rec_command.filepath = NULL;
-   rec_command.data_dest = NULL;
-   rec_command.duration_secs = 0;    // default = timed recording disabled
-   rec_command.samples_per_frame = 1500;  // default samples/frame
-   rec_command.use_lowpass_filter = false;
-   rec_command.filter_cutoff_freq = FILTER_CUTOFF_FREQ; // default 3db cutoff
+   // copy params to local struct
+   rec_command_t primary_cmd;             // main command struct
+   rec_command_t shadow_cmd;              // shadow command struct
+   memcpy(&primary_cmd, rec_cmd, sizeof(rec_command_t)); // copy passed params to local struct
 
+   // misc variables
    uint32_t i, j, k;
    int16_t asample; 
    uint16_t recording_stop = 0;
    float fl;
-   size_t bytes_read; //, bytes_written;  
+   size_t bytes_read;  
    bool file_ok = false;
    bool exec_recording = false;
    bool stop_recording = false;
-
-   uint16_t samples_per_frame = 1024;     // default value
-   int16_t *caller_bufr = nullptr;
-   bool use_lp_filter = false;
+   bool pause_recording = false;   
 
    rec_status_t rec_status;
-   rec_status.status = REC_STATUS_NONE;
-   uint32_t rec_frame_count;
-   uint32_t max_frames;
-   uint8_t wav_hdr[WAV_HEADER_SIZE + 4];
+   rec_status.status = REC_STATUS_NONE;   // status struct returned on request
 
-   // Internal microphone buffers (one frame)
-   uint8_t *mic_raw_data_bufr = (uint8_t *)heap_caps_malloc((MAX_SAMPLES_PER_FRAME * sizeof(int32_t)) + 16, MALLOC_CAP_SPIRAM);  
-   uint8_t *mic_sample_bufr = (uint8_t *)heap_caps_malloc((MAX_SAMPLES_PER_FRAME * sizeof(int16_t)) + 16, MALLOC_CAP_SPIRAM);  
-   float *mic_input = (float *)heap_caps_malloc((MAX_SAMPLES_PER_FRAME * sizeof(float)) + 16, MALLOC_CAP_SPIRAM);  
-   float *mic_output = (float *)heap_caps_malloc((MAX_SAMPLES_PER_FRAME * sizeof(float)) + 16, MALLOC_CAP_SPIRAM);  
+   uint32_t rec_frame_count;              // frame progress counter
+   uint32_t max_frames;                   // total frames in recording
+   uint8_t wav_hdr[WAV_HEADER_SIZE + 4];  // wav file header
+
+   /**
+    * @brief Create an FFT object for VAD analysis
+    */
+#define FORMANT_FFT_SIZE      512      
+   ESP32S3_FFT afft;                      // FFT object
+   fft_table_t *fft_table;
+   fft_table = afft.init(FORMANT_FFT_SIZE, DEFAULT_SAMPLES_PER_FRAME, SPECTRAL_AVERAGE); 
+
+   // Formant energy bands for Valid Audio Detection (VAD) detection
+   float fft_energy_low;
+   float fft_energy_high;
+   float fft_energy_all;
+   float fft_energy_ratio;
+   bool vad_detected = true;              // assume VAD not enabled
+
+   /**
+    * @brief Create a Ring Buffer for VAD
+    */
+#define FRAME_COUNT     5                 // depth of the ring buffer in frames   
+   struct {
+   uint8_t *pFrames  = nullptr;           // contiguous PSRAM bufr for all frames
+   int16_t head      = 0;                 // next write index
+   int16_t tail      = 0;                 // next read index
+   int16_t count     = 0;                 // number of frames available
+   float avg_energy[FRAME_COUNT];
+   float avg_sum     = 0.0;
+   } RingBufr ;
+
+   uint8_t *pframe               = nullptr;
+   uint16_t rb_frame_size        = 0;
+   uint32_t rb_total             = 0;
+// VAD threshold - lower this value to make VAD detection more sensitive   
+#define VAD_THRESHOLD            2.4      // 3x background noise level       
+
+   // Various internal frame buffer pointers (allocated when recording cmd rcvd)
+   uint8_t *mic_raw_data_bufr    = nullptr; 
+   float *mic_float_bufr         = nullptr; 
+   float *mic_output             = nullptr;
+   float *fft_output_buf         = nullptr; 
    
    /**
     * @brief Generate coefficients for lowpass IIR filter
     */
    #define FILTER_TAPS           6
-
    // Float IIR coefficients for 2500 Hz cutoff filter
    float filter_coeffs[FILTER_TAPS] = {1, 1, 1, 1, 1, 1};
    float filter_delay_line[2];            // delay line
    float cutoff_freq;
 
-   // i2s_zero_dma_buffer(I2S_NUM_0);        // does this actualy do anything for reads?
+   i2s_zero_dma_buffer(I2S_NUM_0);        // not sure if this is useful?
 
    /**
     * @brief Infinite loop to capture frames of mic data. 
@@ -137,116 +189,232 @@ void taskRecordAudio(void * params)
       /**
        * @brief Check receiving command queue for mode changes
        */
-      if(xQueueReceive(h_QueueAudioRecCommand, &rec_command, 0) == pdTRUE) {    // check for commands
-         if(rec_command.mode == REC_MODE_START) {
-            exec_recording = true;
+      if(xQueueReceive(h_QueueAudioRecCommand, &shadow_cmd, 0) == pdTRUE) {    // check for commands
+         if(shadow_cmd.mode == REC_MODE_START) {
+            if(!pause_recording) {
+               // Copy parameters from shadow cmd struct
+               memcpy(&primary_cmd, &shadow_cmd, sizeof(rec_command_t));  // copy all params to primary struct               
+               exec_recording = true;     // Start recording
+               rec_status.status = REC_STATUS_NONE;   // no status yet
+               vad_detected = (primary_cmd.enab_vad ^ true); // enab = !detected
 
-            // copy loop values from queue struct
-            use_lp_filter = rec_command.samples_per_frame;
-            caller_bufr = rec_command.data_dest;
-            use_lp_filter = rec_command.use_lowpass_filter;
+               /**
+                * @brief Convert recording duration to number of frames to record.
+                * @note: Duration 0.0 results in 1 frame being recorded
+                */
+               fl = float(primary_cmd.samples_per_frame) / float(AUDIO_SAMPLE_RATE);   // one frame time in ms
+               max_frames = (int(ceil(primary_cmd.duration_secs / fl)));      
+               if(max_frames == 0) max_frames = 1;
+               rec_frame_count = 0;
 
-            // Convert recording duration to number of frames to record
-            // Duration 0.0 results in 1 frame being recorded
-            fl = float(samples_per_frame) / float(AUDIO_SAMPLE_RATE);   // one frame time in ms
-            max_frames = (int(ceil(rec_command.duration_secs / fl)));      
-            if(max_frames == 0) max_frames = 1;
-            rec_frame_count = 0;
-
-            // Generate new coefficients for the IIR audio filter. 
-            // NOTE: This function is unique to the ESP32-S3 mcu.
-            if(use_lp_filter) {
-               cutoff_freq = rec_command.filter_cutoff_freq / float(AUDIO_SAMPLE_RATE);
-               // NOTE: Qfactor == 0.5 <smoother cutoff rate>, 1.0 <sharper cutoff rate>
-               dsps_biquad_gen_lpf_f32((float *)&filter_coeffs, cutoff_freq, 0.707); // nominal cutoff rate
-            }
-
-            /**
-             * @brief If writing to a file: delete old file, open file, write WAV header to file
-             */
-            file_ok = false;                 // no output to file       
-            if(rec_command.filepath != NULL && strlen(rec_command.filepath) > 0) {       // write audio to file?
-               sdcard.deleteFile(rec_command.filepath);  // delete old file if it exists
-            
-               if(sdcard.fileOpen(rec_command.filepath, FILE_APPEND, true)) {
-                  uint32_t file_sz = (max_frames * (rec_command.samples_per_frame * sizeof(int16_t))); // + WAV_HEADER_SIZE;
-                  memset(&wav_hdr, 0x0, WAV_HEADER_SIZE + 4);
-                  audio.CreateWavHeader((uint8_t *)&wav_hdr, file_sz);
-                  file_ok = sdcard.fileWrite((uint8_t *)wav_hdr, WAV_HEADER_SIZE + 4);
+               /**
+                * @brief Generate new coefficients for the IIR audio filter. 
+                * @note: DSP functions are unique to the ESP32-S3 mcu variant.
+                */
+               if(primary_cmd.use_lowpass_filter) {
+                  cutoff_freq = primary_cmd.filter_cutoff_freq / float(AUDIO_SAMPLE_RATE);
+                  // NOTE: Qfactor == 0.5 <smoother cutoff rate>, 1.0 <sharper cutoff rate>
+                  dsps_biquad_gen_lpf_f32((float *)&filter_coeffs, cutoff_freq, 0.707); // nominal cutoff rate
                }
-            }
 
-         } else if(rec_command.mode == REC_MODE_STOP) {
-            rec_command.mode = REC_MODE_IDLE;
+               /**
+                * @brief If writing to a file: delete old file, open new file, write WAV header to file
+                */
+               file_ok = false;                 // assume no output to file       
+               if(primary_cmd.filepath != NULL && strlen(primary_cmd.filepath) > 0) {       // write audio to file?
+                  sdcard.deleteFile(primary_cmd.filepath);  // delete old file if it exists
+               
+                  if(sdcard.fileOpen(primary_cmd.filepath, FILE_APPEND, true)) {
+                     uint32_t file_sz = (max_frames * (primary_cmd.samples_per_frame * sizeof(int16_t))); // + WAV_HEADER_SIZE;
+                     memset(&wav_hdr, 0x0, WAV_HEADER_SIZE + 4);
+                     audio.CreateWavHeader((uint8_t *)&wav_hdr, file_sz);
+                     file_ok = sdcard.fileWrite((uint8_t *)wav_hdr, WAV_HEADER_SIZE + 4);
+                  }
+               }
+             
+               /**
+                * @brief Create new ring buffer in PSRAM
+                */
+               if(RingBufr.pFrames)              // if bufr previously allocated, free it
+                  free(RingBufr.pFrames);
+               rb_frame_size = primary_cmd.samples_per_frame * sizeof(int16_t);
+               rb_total = FRAME_COUNT * rb_frame_size;
+               RingBufr.pFrames = (uint8_t*) heap_caps_malloc(rb_total, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+               if (!RingBufr.pFrames) {
+                  Serial.println("PSRAM allocation failed!");
+               }
+               // Clear ringbufr for new use
+               RingBufr.head = RingBufr.tail = RingBufr.count = 0;
+               for(i=0; i<FRAME_COUNT; i++)     // clear averaging
+                  RingBufr.avg_energy[i] = 0.0;  
+               
+               /**
+                * @brief Create working buffers dynamically
+                */
+               if(mic_raw_data_bufr)
+                  free(mic_raw_data_bufr);   // free previous buffer
+               mic_raw_data_bufr = (uint8_t *)heap_caps_malloc((primary_cmd.samples_per_frame * sizeof(int32_t)) + 256, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT);  
+
+               if(mic_float_bufr)
+                  free(mic_float_bufr);
+               mic_float_bufr = (float *)heap_caps_malloc((primary_cmd.samples_per_frame * sizeof(float)) + 256, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT);
+
+               if(mic_output)
+                  free(mic_output);
+               mic_output = (float *) heap_caps_aligned_alloc(32, (primary_cmd.samples_per_frame * sizeof(float)) + 256, MALLOC_CAP_SPIRAM);                
+
+               if(fft_output_buf)
+                  free(fft_output_buf);
+               fft_output_buf = (float *) heap_caps_aligned_alloc(32, (FORMANT_FFT_SIZE * sizeof(float)) + 256, MALLOC_CAP_SPIRAM);           
+
+               // *** END > REC_MODE_START          
+            } else {
+               pause_recording = false;
+            }
+         } else if(shadow_cmd.mode == REC_MODE_PAUSE) {
+            pause_recording = true;
+         } else if(shadow_cmd.mode == REC_MODE_STOP) {  // stop recording 
             exec_recording = false;
             stop_recording = true;
-         } else if(rec_command.mode == REC_MODE_SEND_STATUS) {
+         } else if(shadow_cmd.mode == REC_MODE_SEND_STATUS) {  // send status when requested
+            // Clear recording & paused bits. No other bits are affected
+            rec_status.status &= ~(REC_STATUS_RECORDING | REC_STATUS_PAUSED);
             rec_status.max_frames = max_frames;
             rec_status.recorded_frames = rec_frame_count;
-            rec_status.status = REC_STATUS_PROGRESS;  // report progress on demand
-            xQueueSend( h_QueueAudioRecStatus, ( void * ) &rec_status, ( TickType_t ) 100 ); // notify that text to speech is complete  
-         } else if(rec_command.mode == REC_MODE_KILL) { // delete task?
+            if(exec_recording)
+               rec_status.status |= REC_STATUS_RECORDING;  // report progress on demand
+            if(pause_recording)
+               rec_status.status |= REC_STATUS_PAUSED;
+            xQueueSend( h_QueueAudioRecStatus, ( void * ) &rec_status, ( TickType_t ) 100 );  // send status 
+            rec_status.status = REC_STATUS_NONE;       
+         } else if(shadow_cmd.mode == REC_MODE_KILL) { // delete task?
             break;
          } 
-      }
+      }     // *** END Queue Command Receive
 
       /**
        * Read audio samples from the mic I2S bus
        */
-      if(exec_recording) {
-         i2s_read(I2S_NUM_0, (uint8_t *)mic_raw_data_bufr, samples_per_frame * sizeof(int32_t), 
+      if(exec_recording && !pause_recording) {
+         i2s_read(I2S_NUM_0, (uint8_t *)mic_raw_data_bufr, primary_cmd.samples_per_frame * sizeof(int32_t), 
                &bytes_read, portMAX_DELAY);  
          uint16_t num_samples = bytes_read / sizeof(int32_t);
 
          /**
          * @brief Crunch 24 bit mic audio samples into signed 16 bit values 
-         */                                   
-         for (j = 0; j < num_samples; j++) {    // samples are 24 bit data in 32 bit value
+         */     
+         pframe = RingBufr.pFrames + (RingBufr.head * rb_frame_size); // Get next avail frame
+         // <PUSH> data into new RingBufr space. If RingBufr full, overwrites oldest frame
+         for (j = 0; j < num_samples; j++) {    // Mic samples are 24 bits in 32 bit value
             asample = mic_raw_data_bufr[(j*4)+3];                 // MSB of 24 bit data
             asample = asample << 8 | mic_raw_data_bufr[(j*4)+2];  // LSB "  "    
-            asample *= MIC_GAIN_FACTOR;  // higher gain for 'useful' audio volume    
-
-            if(!use_lp_filter) { 
-               // normalize int sample and save in caller dest bufr    
-               reinterpret_cast<int16_t*>(mic_sample_bufr)[j] = asample;           
-            } else {
-               mic_input[j] = float(asample);   // save as float data for LP filter
-            }
+            asample *= MIC_GAIN_FACTOR;   // Normalize Mic gain for audio volume    
+            // Save mic audio as int16_t data in the RingBufr
+            reinterpret_cast<int16_t*>(pframe)[j] = asample; 
+            // Also, save as float data for LP filter & FFT functions
+            mic_float_bufr[j] = float(asample);   
          }
+
+         /**
+          * @brief Rotate RingBufr to next available frame 
+          */
+         if(primary_cmd.enab_vad) {
+            RingBufr.head = (RingBufr.head + 1) % FRAME_COUNT;
+            if (RingBufr.count == FRAME_COUNT) {
+               RingBufr.tail = (RingBufr.tail + 1) % FRAME_COUNT;  // overwrite oldest
+            } else {
+               RingBufr.count++;
+            }
+         }         
 
          /**
           * @brief Apply butterworth audio filter to mic data. This uses an optimized DSP 
           *    function that is unique to the ESP32-S3 MCU.
           */
-         if(use_lp_filter) {
-            dsps_biquad_f32_aes3(mic_input, mic_output, num_samples, 
+         if(primary_cmd.use_lowpass_filter) {
+            dsps_biquad_f32_aes3(mic_float_bufr, mic_output, num_samples, 
                   (float *)&filter_coeffs, (float *)&filter_delay_line);
 
-            // Convert float data back into signed 16 bit integer and send to caller bufr
-            for(j=0; j<samples_per_frame; j++) {
-               reinterpret_cast<int16_t*>(mic_sample_bufr)[j] = int(mic_output[j]);
+            // Convert float data back to signed 16 bit integer and save in RingBufr
+            for(j=0; j<primary_cmd.samples_per_frame; j++) {
+               reinterpret_cast<int16_t*>(pframe)[j] = int(mic_output[j]);
             }
          }         
 
          /**
-          * @brief Write one frame of mic audio to file on the SD Card
+          * @brief If VAD (Valid Audio Detect) is enabled, perform an FFT to analyse
+          * if speech has been detected. 
+          */ 
+         if(primary_cmd.enab_vad && !vad_detected) {
+            if(primary_cmd.use_lowpass_filter) {
+               // Perform 1K FFT on the mic float data. Compute time ~ 3.5ms.  
+               afft.compute(mic_output, fft_output_buf, true);
+            } else { 
+               afft.compute(mic_float_bufr, fft_output_buf, true); 
+            }
+
+            fft_energy_low = 0.0;
+            fft_energy_high = 0.0;
+            fft_energy_all = 0.0;
+            for(k=FFT_BIN_LOW; k<FFT_BIN_HIGH; k++) {    // avg energy from 300 - 2500 hz
+               // fft_energy_all += fft_output_buf[k];
+               if(k < FFT_BIN_MID) 
+                  fft_energy_low += fft_output_buf[k];
+               else 
+                  fft_energy_high += fft_output_buf[k];
+            }
+            fft_energy_ratio = fft_energy_low / fft_energy_high;
+            RingBufr.avg_energy[RingBufr.head] = fft_energy_ratio;
+            RingBufr.avg_sum = 0.0;
+            for(i=0; i<FRAME_COUNT; i++) {
+               RingBufr.avg_sum += RingBufr.avg_energy[i];
+            }          
+            RingBufr.avg_sum /= RingBufr.count;
+                     // Serial.printf("avg=%.2f\n", RingBufr.avg_sum);  
+            if(RingBufr.count > 2) {      // ringbufr needs more than 'n' frames for reasonable avg
+               vad_detected = (RingBufr.avg_sum > VAD_THRESHOLD) ? true : false;
+                  // if(vad_detected)
+                  //    Serial.println("##########");
+            }
+         }
+
+         /** 
+          * @brief Check if recording is complete.
           */
+         if(vad_detected) {
+            if(++rec_frame_count >= max_frames) {   // test for completion
+               stop_recording = true;
+            }         
+         }
+
+         // get pointer to oldest frame in the ring buffer
+         pframe = RingBufr.pFrames + (RingBufr.tail * rb_frame_size); 
+
+         /** 
+          * @brief Write one frame of mic audio to file on the SD Card
+          */        
          if(file_ok) {
-            sdcard.fileWrite((uint8_t *)mic_sample_bufr, num_samples * sizeof(int16_t));
+            if(!primary_cmd.enab_vad) {   // RingBufr <PEEK>
+               sdcard.fileWrite((uint8_t *)pframe, rb_frame_size);
+            } else if(vad_detected) {     // RingBufr <POP>
+               uint8_t *_pframe = pframe; // frame ptr temp copy 
+               while(RingBufr.count > 0) {
+                  sdcard.fileWrite((uint8_t *)_pframe, rb_frame_size);                  
+                  RingBufr.tail = (RingBufr.tail + 1) % FRAME_COUNT;
+                  RingBufr.count--;
+                  if(!stop_recording)     // if stopping, empty the ring bufr into the file
+                     break;
+                  _pframe = RingBufr.pFrames + (RingBufr.tail * rb_frame_size); // next frame
+               }
+            }
          }         
 
          /**
           * @brief Copy 16 bit mic data to callers buffer (16 bit int)
           */
-         if(caller_bufr) {
-            memcpy((uint8_t *)caller_bufr, (uint8_t *)mic_sample_bufr, num_samples * sizeof(int16_t));
-         }
-   
-         /**
-          * @brief Check if recording is complete.
-          */
-         if(++rec_frame_count >= max_frames) {   // test for completion
-            stop_recording = true;
+         if(primary_cmd.data_dest) {
+            memcpy((uint8_t *)primary_cmd.data_dest, (uint8_t *)pframe, rb_frame_size);
+            rec_status.status |= REC_STATUS_FRAME_AVAIL;
          }
       }    
 
@@ -256,28 +424,27 @@ void taskRecordAudio(void * params)
       if(stop_recording) {
          stop_recording = false;          // do only once
          exec_recording = false;          // recording stopped
+         pause_recording = false;
+         primary_cmd.mode = REC_MODE_IDLE;   // redundant ?
          rec_status.max_frames = max_frames;
          rec_status.recorded_frames = rec_frame_count;         
          // inform caller that recording is completed
-         rec_status.status = REC_STATUS_REC_CMPLT;
-         xQueueSend( h_QueueAudioRecStatus, ( void * ) &rec_status, ( TickType_t ) 1000 ); // notify that text to speech is complete               
-         if(file_ok) {              
-            sdcard.fileClose();     // close file that was opened inside this function
-         }
+         rec_status.status = REC_STATUS_REC_CMPLT; // status = recording complete
+         // xQueueSend( h_QueueAudioRecStatus, ( void * ) &rec_status, ( TickType_t ) 1000 ); // notify that text to speech is complete               
+         if(file_ok)               
+            sdcard.fileClose();           // close file that was opened previously
       }
-
       vTaskDelay(1);
    }                 // ***end*** while(true)       
 
    /**
     * Kill the background task - release used buffer & queue memory
     */ 
-   if(file_ok)               
-      sdcard.fileClose();                 // close file if it was opened previously
    free(mic_raw_data_bufr);               // free internal buffers in PSRAM
-   free(mic_sample_bufr);
-   free(mic_input);
-   free(mic_output);
+   free(mic_float_bufr);                  // used for LP filter and FFT
+   free(mic_output);                      // "    "
+   free(fft_output_buf);
+   free(RingBufr.pFrames);
    vQueueDelete(h_QueueAudioRecStatus);   // free status queue memory 
    vQueueDelete(h_QueueAudioRecCommand);  // free command queue memory    
    vTaskDelay(10);                        // wait a tad
@@ -301,9 +468,8 @@ uint32_t AUDIO::convDurationToFrames(float duration_secs, float samples_frame, f
 
 
 /********************************************************************
- * @brief Check current state of the audio recording background task
- * @return If status, return ptr to a rec_status_t struct. Otherwise
- *    return REC_STATUS_NONE status.
+ * @brief Check current state of the audio recording background task.
+ * @return Pointer to a rec_status_t struct. See 'audio.h'
  */
 rec_status_t * AUDIO::getRecordingStatus(void)
 {
@@ -329,15 +495,18 @@ rec_status_t * AUDIO::getRecordingStatus(void)
  *  @param output - pointer to callers buffer. If NULL, no mem output.
  *  @param filepath - pointer to path/filename to write data to sd card.
  */
-void AUDIO::startRecording(float duration_secs, int16_t *output, uint16_t samples_frame, const char *filepath)
+void AUDIO::startRecording(float duration_secs, bool enab_vad, bool enab_lp_filter, 
+      const char *filepath, int16_t *output, uint16_t samples_frame, float lp_cutoff_freq) 
 {
-   _rec_cmd.mode = REC_MODE_START;             // modes - see REC_MODE_xxx below.
-   _rec_cmd.duration_secs = duration_secs;     // > 0: timed recording mode, duration in milliseconds
-   _rec_cmd.samples_per_frame = samples_frame; // num 16 bit samples per frame.
-   _rec_cmd.data_dest = output;                // if ptr != NULL, send signed 16 bit data to mem location
-   _rec_cmd.filepath = filepath;               // if path != NULL: append data to sd card file 
-   _rec_cmd.use_lowpass_filter = false;        // true enables lp filter of mic data
-   _rec_cmd.filter_cutoff_freq = FILTER_CUTOFF_FREQ;  // cutoff freq (3db point) of LP filter in HZ
+   static rec_command_t _rec_cmd;
+   _rec_cmd.mode = REC_MODE_START;              // modes - see REC_MODE_xxx below.
+   _rec_cmd.duration_secs = duration_secs;      // > 0: timed recording mode, duration in milliseconds
+   _rec_cmd.enab_vad = enab_vad;                // begin recording when voice is detected   
+   _rec_cmd.use_lowpass_filter = enab_lp_filter; 
+   _rec_cmd.filepath = filepath;                // if path != NULL: append data to sd card file      
+   _rec_cmd.data_dest = output;                 // if ptr != NULL, send signed 16 bit data to mem location
+   _rec_cmd.samples_per_frame = samples_frame;  // num 16 bit samples per frame.
+   _rec_cmd.filter_cutoff_freq = lp_cutoff_freq;
    // send start cmd & params to the background task
    xQueueSend( h_QueueAudioRecCommand, ( void * ) &_rec_cmd, 100 ); // command start  
 }
@@ -349,10 +518,25 @@ void AUDIO::startRecording(float duration_secs, int16_t *output, uint16_t sample
  */
 void AUDIO::stopRecording(void)
 {
-   _rec_cmd.mode = REC_MODE_START,             // modes - see REC_MODE_xxx below.
+   rec_command_t _rec_cmd;
+   _rec_cmd.mode = REC_MODE_STOP;             // modes - see REC_MODE_xxx below.
 
    // send start cmd & params to the background task
    xQueueSend( h_QueueAudioRecCommand, ( void * ) &_rec_cmd, 100 ); // command start  
+}
+
+
+/********************************************************************
+ *  @brief Pause a current recording. If no recording is executing, this 
+ *  command is ignored.
+ */
+void AUDIO::pauseRecording(void)
+{
+   rec_command_t _rec_cmd;
+   _rec_cmd.mode = REC_MODE_PAUSE;             // modes - see REC_MODE_xxx below.
+
+   // send start cmd & params to the background task
+   xQueueSend( h_QueueAudioRecCommand, ( void * ) &_rec_cmd, 100 ); // command start 
 }
 
 
@@ -552,6 +736,8 @@ void playToneTask(void * params)
    uint32_t bytes_written;
    esp_err_t err;
    float ratio = (PI * 2) * tone_freq / sample_rate;  // constant for sinewave
+         // Serial.printf("tone freq=%.2f, samples per cycle=%.2f, total_bytes=%.2f, total_samples=%.2f, bufr_pad=%d\n", 
+         //    tone_freq, samples_per_cycle, total_bytes, total_samples, bufr_pad);
 
    memset(sample_buf, 0x0, I2S_DMA_BUFR_LEN * sizeof(int16_t));   // clear sample bufr 
    idx = 0;
@@ -616,50 +802,11 @@ void AUDIO::stopTone(void)
 
 
 /********************************************************************
-*  @fn Play raw uncompressed audio from a buffer in memory.
-*/
-bool AUDIO::playRawAudio(uint8_t *audio_in, uint32_t len, uint16_t volume)
-{
-   esp_err_t err;
-   uint32_t bytes_written = 0;
-   uint32_t i;
-   int16_t v;
-   if(volume > 100) volume = 100;   // constrain volume to 100 max
-   float vol = float(volume) / 100.0;  // volume is from 0.0 to 1.0
-   float newvol;
-
-   if(len == 0)
-      return false;
-
-   /**
-   *  @brief Apply volume control to audio data.
-   */
-   if(volume > 0) {
-      for(i=0; i<len; i+=2) {
-         v = audio_in[i+1];
-         v = (v << 8) | audio_in[i];
-         newvol = float(v) * vol;
-         v = int(newvol);
-         audio_in[i+1] = v >> 8;
-         audio_in[i] = v & 0XFF;
-      }
-   }
-   err = i2s_write(I2S_NUM_1, (uint16_t *)audio_in, len, &bytes_written, portMAX_DELAY);
-         // Serial.printf("bytes written=%d\n", bytes_written);
-   if(err != ESP_OK || bytes_written == 0) {
-      Serial.printf("[Error]: i2s_write error, bytes written=%d", bytes_written);
-      return false;
-   }   
-   return true;
-}
-
-
-/********************************************************************
 *  @fn Stop a currently playing WAV file.
 */
 void AUDIO::stopWavPlaying(void)
 {
-   playWavFromSD_Stop = true;
+   playWavFile_Stop = true;
 }
 
 
@@ -668,13 +815,13 @@ void AUDIO::stopWavPlaying(void)
 */
 bool AUDIO::isPlaying(void) 
 {
-   return (playWavFromSD_Progress > -1) ? true : false;
+   return (playWavFile_Progress > -1) ? true : false;
 }
 
 
 int8_t AUDIO::getWavPlayProgress(void)
 {
-   return playWavFromSD_Progress;
+   return playWavFile_Progress;
 }      
 
 /********************************************************************
@@ -683,7 +830,7 @@ int8_t AUDIO::getWavPlayProgress(void)
 *  @param filename - C string name of file on SD card to play.
 *  @param volume - 0 - 100%
 */
-bool AUDIO::playWavFromSD(const char *filename, uint16_t volume) 
+bool AUDIO::playWavFile(const char *filename, uint16_t volume) 
 {
    float vol = float(volume) / 100;
    esp_err_t err;
@@ -700,8 +847,8 @@ bool AUDIO::playWavFromSD(const char *filename, uint16_t volume)
 
    #define WAV_BUFR_SIZE      (512 * sizeof(uint16_t))   // chunk size
 
-   playWavFromSD_Stop = false;
-   playWavFromSD_Progress = 0;
+   playWavFile_Stop = false;
+   playWavFile_Progress = 0;
 
    // Create temp buffer in PSRAM
    uint8_t *buffer = (uint8_t *)heap_caps_malloc(WAV_BUFR_SIZE + 16, MALLOC_CAP_SPIRAM); 
@@ -761,7 +908,7 @@ bool AUDIO::playWavFromSD(const char *filename, uint16_t volume)
    while(play_loop) { 
 
       // Check queue for commands 
-      if(playWavFromSD_Stop) 
+      if(playWavFile_Stop) 
          break;
 
       bytesToRead = (sampled_data_size < WAV_BUFR_SIZE) ? sampled_data_size : WAV_BUFR_SIZE;
@@ -778,7 +925,7 @@ bool AUDIO::playWavFromSD(const char *filename, uint16_t volume)
       idx += bytesRead;                   // move seek position to end of file
 
       // Keep a running tab on play progress
-      playWavFromSD_Progress = map(idx, 0, file_sz, 0, 100); // progress from 0 - 100%
+      playWavFile_Progress = map(idx, 0, file_sz, 0, 100); // progress from 0 - 100%
 
       // if file is stereo, convert to mono
       if(num_chnls > 1) {                 // stereo data?
@@ -789,33 +936,54 @@ bool AUDIO::playWavFromSD(const char *filename, uint16_t volume)
          bytesRead /= 2;                  // mono data = stereo data / 2
       }
 
-      /**
-      *  @brief Apply volume control to I2S speaker data.
-      */
-      if(volume > 0) {
-         for(i=0; i<bytesRead; i+=2) {
-            v16 = buffer[i+1];
-            v16 = (v16 << 8) | buffer[i];
-            newvol = float(v16) * vol;
-            v16 = int(newvol);
-            buffer[i+1] = v16 >> 8;
-            buffer[i] = v16 & 0XFF;
-         }
+      if(!playRawAudio(buffer, bytesRead, volume)) {
+         break;                           // on error, exit play_loop
       }
-
-      /**
-       * @brief Write data to I2S speaker power amp (MAX98357)
-       */
-      err = i2s_write(I2S_NUM_1, (uint16_t *)buffer, bytesRead, &bytesWritten, portMAX_DELAY);
-      if(err != ESP_OK || bytesWritten == 0) {
-         break;
-      }   
+  
    }
 
    if(file_ok)
       sdcard.fileClose();                 // close file if it was previously opened 
    free(buffer);   
-   playWavFromSD_Progress = -1;           // indicate completion
+   playWavFile_Progress = -1;           // indicate completion
    return true;                           // return true if successful
+}
+
+
+/********************************************************************
+*  @fn Play a block of uncompressed 16-bit audio from memory.
+*/
+bool AUDIO::playRawAudio(uint8_t *audio_bufr, uint32_t len, uint16_t volume)
+{
+   esp_err_t err;
+   uint32_t bytes_written = 0;
+   uint32_t i;
+   int32_t v;
+   if(volume > 100) volume = 100;   // constrain volume to 100 max
+
+   if(len == 0 || audio_bufr == NULL)
+      return false;
+
+   /**
+   *  @brief Apply volume factor to audio data.
+   */
+   int16_t *pv = reinterpret_cast<int16_t*>(audio_bufr); // need 16 bit ptr
+   if(volume > 0) { 
+      for(i=0; i<len/2; i++) {
+         v = pv[i] * volume;
+         v /= 100;                        // apply volume
+         pv[i] = v;
+      }
+   } else {
+      return true;                        // volume == 0 (no sound)
+   }
+
+   // Write data to I2S device
+   err = i2s_write(I2S_NUM_1, (uint16_t *)audio_bufr, len, &bytes_written, portMAX_DELAY);
+   if(err != ESP_OK || bytes_written == 0) {
+      Serial.printf("Error: i2s_write err=%d\n", err);
+      return false;
+   }   
+   return true;
 }
 
