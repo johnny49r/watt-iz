@@ -39,6 +39,7 @@ void tileview_change_cb(lv_event_t *e);
 void demo_page1(lv_obj_t *parent);
 void demo_page2(lv_obj_t *parent);
 void demo_page3(lv_obj_t *parent);
+void demo_page4(lv_obj_t *parent);
 void butn_event_cb(lv_event_t * e);
 void switch_event_handler(lv_event_t * e);
 static void slider_event_cb(lv_event_t * e);
@@ -60,14 +61,23 @@ static lv_style_t style_butn_released;
 static lv_style_t style_butn_pressed;
 static lv_style_t style_label_default;
 
+static lv_obj_t *audio_cont;           // container for audio controls
+static lv_obj_t *record_butn;
+static lv_obj_t *play_butn;
+static lv_obj_t *stop_butn;
+static lv_obj_t *pause_butn;
+static lv_obj_t *rec_chart;
+static lv_chart_series_t *rec_ser;
+static lv_timer_t *rec_chart_timer;
+
+static lv_obj_t *progress_bar;
+
 // lvgl objects
 static lv_obj_t *tileview;
 static lv_obj_t *tv_demo_page1;
 static lv_obj_t *tv_demo_page2;
 static lv_obj_t *tv_demo_page3;
-static lv_obj_t *next_butn;
-static lv_obj_t *scrn1;
-static lv_obj_t *scrn2;
+static lv_obj_t *tv_demo_page4;
 static lv_obj_t *chart;
 static lv_obj_t *chart_sw;
 static lv_chart_series_t *ser1;

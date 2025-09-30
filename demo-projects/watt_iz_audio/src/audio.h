@@ -11,14 +11,55 @@
 #include "dsps_biquad.h"
 #include "sdcard.h"
 #include "utils.h"
+#include "esp32s3_fft.h"
 
 // misc defines
 #define AUDIO_SAMPLE_RATE                 16000
 #define FILTER_CUTOFF_FREQ                3300.0
-#define MAX_SAMPLES_PER_FRAME             2048  // maximum mic 'chunk' samples per frame
+#define DEFAULT_SAMPLES_PER_FRAME         1536
 #define WAV_HEADER_SIZE                   44
 
 #define I2S_DMA_BUFR_LEN                  1024
+
+// FFT 
+#define FFT_SIZE                          1024  //512
+
+// Formant bands
+#define FFT_BIN_LOW                       4     // approx 125 hz
+#define FFT_BIN_MID                       21    // approx 640 hz
+#define FFT_BIN_HIGH                      48   // approx 1500 hz
+
+// mic recording commands
+enum {
+   REC_MODE_IDLE=0x0,   
+   REC_MODE_START,
+   REC_MODE_STOP,
+   REC_MODE_PAUSE,
+   REC_MODE_SEND_STATUS,
+   REC_MODE_KILL,
+};
+
+// mic recorder status flags (can be or'ed together)
+enum {
+   REC_STATUS_NONE=0,
+   REC_STATUS_RECORDING=0x0001,           // reporting progress 0-100%
+   REC_STATUS_PAUSED=0x0002,
+   REC_STATUS_FRAME_AVAIL=0x0004,         // new recorded frame is available
+   REC_STATUS_REC_CMPLT=0x0008,
+};
+
+// Tone commands
+enum {
+   TONE_CMD_NONE=0,
+   TONE_CMD_CLOSE,
+};
+
+// Wav player commands
+enum {
+   WAV_CMD_NONE=0,
+   WAV_CMD_STOP,
+   
+};
 
 // non-class function prototypes
 void taskRecordAudio( void * params );
@@ -27,13 +68,14 @@ void playToneTask(void * params);
 
 // Structure passed to 'taskRecordAudio' to perform audio recordings
 typedef struct {
-   uint16_t mode;                         // modes - see REC_MODE_xxx below.
-   float duration_secs;                   // duration in seconds
-   uint16_t samples_per_frame;            // number of 16 bit samples per frame
-   int16_t *data_dest;                    // if ptr != NULL, send signed 16 bit data to mem location
-   const char *filepath;                  // if path != NULL: append data to sd card file 
-   bool use_lowpass_filter;               // true enables lp filter of mic data
-   float filter_cutoff_freq;              // cutoff freq (3db point) of LP filter in HZ
+   uint16_t mode = REC_MODE_IDLE;         // modes - see REC_MODE_xxx below.
+   float duration_secs = 0;               // duration in seconds
+   uint16_t samples_per_frame = DEFAULT_SAMPLES_PER_FRAME;  // number of 16 bit samples per frame
+   int16_t *data_dest = NULL;             // if ptr != NULL, send signed 16 bit data to mem location
+   const char *filepath = NULL;           // if path != NULL: append data to sd card file 
+   bool use_lowpass_filter = false;       // true enables lp filter of mic data
+   float filter_cutoff_freq = FILTER_CUTOFF_FREQ;  // cutoff freq (3db point) of LP filter in HZ
+   bool enab_vad = true;                  // recording begins when voice is detected
 } rec_command_t ;
 
 typedef struct {
@@ -59,34 +101,6 @@ typedef struct {
    uint8_t cmd;
 } tone_cmd_queue_t;
 
-// mic recording commands
-enum {
-   REC_MODE_IDLE=0x0,   
-   REC_MODE_START,
-   REC_MODE_STOP,
-   REC_MODE_SEND_STATUS,
-   REC_MODE_KILL,
-};
-
-// mic recorder status 
-enum {
-   REC_STATUS_NONE=0,
-   REC_STATUS_PROGRESS,
-   REC_STATUS_REC_CMPLT,
-};
-
-// Tone commands
-enum {
-   TONE_CMD_NONE=0,
-   TONE_CMD_CLOSE,
-};
-
-// Wav player commands
-enum {
-   WAV_CMD_NONE=0,
-   WAV_CMD_STOP,
-   
-};
 
 /**
  * AUDIO class
@@ -102,16 +116,20 @@ class AUDIO {
       void playTone(float tone_freq, float sample_rate, float volume, float duration_sec);
       void stopTone(void);   
       bool playRawAudio(uint8_t *audio_in, uint32_t len, uint16_t volume); 
-      bool playWavFromSD(const char *filename, uint16_t volume);         
+      bool playWavFile(const char *filename, uint16_t volume);         
       bool isPlaying(void);
       void stopWavPlaying(void);
       int8_t getWavPlayProgress(void);
 
-      uint32_t convDurationToFrames(float duration_secs, float samples_frame=MAX_SAMPLES_PER_FRAME, float sample_rate_hz=AUDIO_SAMPLE_RATE);
+      uint32_t convDurationToFrames(float duration_secs, float samples_frame=DEFAULT_SAMPLES_PER_FRAME, 
+               float sample_rate_hz=AUDIO_SAMPLE_RATE);
       void clearReadBuffer(void);   // clears the read dma buffer of any contents
-      void startRecording(float duration_secs, int16_t *output, uint16_t samples_frame, const char *filepath);
+      void startRecording(float duration_secs=0.0, bool enab_vad=false, bool enab_lp_filter=false, 
+               const char *filepath=NULL, int16_t *output=NULL, uint16_t samples_frame=DEFAULT_SAMPLES_PER_FRAME, 
+               float lp_cutoff_freq=FILTER_CUTOFF_FREQ);
       void stopRecording(void);
-      rec_status_t * getRecordingStatus(void);
+      void pauseRecording(void);
+      rec_status_t *getRecordingStatus(void);
 
       // WAV header
       static const int headerSize = 44;
@@ -119,8 +137,8 @@ class AUDIO {
 
 
    private:
-      volatile bool playWavFromSD_Stop;
-      volatile int8_t playWavFromSD_Progress;
+      volatile bool playWavFile_Stop;
+      volatile int8_t playWavFile_Progress;
 };
 
 extern AUDIO audio;

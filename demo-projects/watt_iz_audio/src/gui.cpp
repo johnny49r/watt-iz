@@ -15,6 +15,7 @@ TFT_eSPI tft = TFT_eSPI();
    uint16_t calData[5] = { 360, 3400, 360, 3400, 7 }; // Example — use your own from calibration
 #endif
 
+// Global variables 
 bool NVS_OK = false;                   // global OK flag for non-volatile storage lib
 
 // FFT stuff
@@ -249,12 +250,14 @@ void demoBuilder(void)
    // Create tiles
    tv_demo_page1 =  lv_tileview_add_tile(tileview, 0, 0, LV_DIR_RIGHT);
    tv_demo_page2 =  lv_tileview_add_tile(tileview, 1, 0, LV_DIR_HOR);
-   tv_demo_page3 =  lv_tileview_add_tile(tileview, 2, 0, LV_DIR_LEFT);   
+   tv_demo_page3 =  lv_tileview_add_tile(tileview, 2, 0, LV_DIR_HOR);   
+   tv_demo_page4 =  lv_tileview_add_tile(tileview, 3, 0, LV_DIR_LEFT);      
 
    // build tile pages
    demo_page1(tv_demo_page1);             // build the top level switch page
    demo_page2(tv_demo_page2);               
-   demo_page3(tv_demo_page3);              
+   demo_page3(tv_demo_page3);  
+   demo_page4(tv_demo_page4);                 
 
    // default to top level page
    lv_disp_trig_activity(NULL);           // restart no activity timer
@@ -294,18 +297,6 @@ void demo_page1(lv_obj_t *parent)
    lv_obj_set_style_text_font(swipe_label1, &lv_font_montserrat_20, LV_PART_MAIN);   
    lv_obj_align(swipe_label1, LV_ALIGN_BOTTOM_MID, 0, 0);   
 
-   // // Next button
-   // next_butn = lv_button_create(parent);
-   // lv_obj_set_size(next_butn, 80, 32);
-   // lv_obj_align(next_butn, LV_ALIGN_BOTTOM_MID, 0, -10);
-   // lv_obj_add_style(next_butn, &style_butn_released, LV_STATE_DEFAULT);
-   // lv_obj_add_style(next_butn, &style_butn_pressed, LV_STATE_PRESSED);   
-   // lv_obj_add_event_cb(next_butn, butn_event_cb, LV_EVENT_CLICKED, NULL);
-
-   // lv_obj_t *next_butn_label = lv_label_create(next_butn);
-   // lv_obj_add_style(next_butn_label, &style_label_default, LV_PART_MAIN);
-   // lv_label_set_text(next_butn_label, "Next " LV_SYMBOL_RIGHT);
-   // lv_obj_center(next_butn_label);   
 }
 
 
@@ -313,6 +304,182 @@ void demo_page1(lv_obj_t *parent)
  * Demo Page 2
  */
 void demo_page2(lv_obj_t *parent)
+{
+#define EXT_CLICK_AREA        6   
+   // audio control container
+   audio_cont = lv_obj_create(parent);
+   lv_obj_set_size(audio_cont, 300, 54);
+   lv_obj_set_style_border_width(audio_cont, 2, LV_PART_MAIN);
+   lv_obj_set_style_border_color(audio_cont, lv_color_white(), LV_PART_MAIN);
+   lv_obj_set_style_bg_opa(audio_cont, LV_OPA_TRANSP, LV_PART_MAIN);   
+   lv_obj_set_style_radius(audio_cont, 6, LV_PART_MAIN); // rounded corner radius 
+   lv_obj_align(audio_cont, LV_ALIGN_TOP_MID, 0, 5); 
+   lv_obj_set_scrollbar_mode(audio_cont, LV_SCROLLBAR_MODE_OFF);  // don't show scrollbars on non-scrolling pages
+   lv_obj_clear_flag(audio_cont, LV_OBJ_FLAG_SCROLLABLE);   
+
+   // Create RECORD button
+   record_butn = lv_btn_create(audio_cont);
+   lv_obj_set_size(record_butn, 44, 44);
+   lv_obj_add_style(record_butn, &style_butn_released, LV_PART_MAIN | LV_STATE_DEFAULT);
+   lv_obj_add_style(record_butn, &style_butn_pressed, LV_PART_MAIN | LV_STATE_PRESSED);   
+   lv_obj_set_style_bg_color(record_butn, lv_palette_lighten(LV_PALETTE_RED, 1), LV_PART_MAIN);   
+   lv_obj_set_style_border_color(record_butn, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_MAIN);   
+   lv_obj_set_style_radius(record_butn, 22, LV_PART_MAIN);   // make button a circle
+   lv_obj_align(record_butn, LV_ALIGN_LEFT_MID, 0, 0);   
+   lv_obj_add_event_cb(record_butn, &butn_event_cb, LV_EVENT_CLICKED, NULL);   
+   lv_obj_set_ext_click_area(record_butn, EXT_CLICK_AREA);
+
+   lv_obj_t *record_label = lv_label_create(record_butn);
+   lv_obj_set_style_text_font(record_label, &lv_font_montserrat_22, LV_PART_MAIN); 
+   lv_obj_center(record_label);
+   lv_label_set_text(record_label, "R");
+
+   // Create PLAY button
+   play_butn = lv_btn_create(audio_cont);
+   lv_obj_set_size(play_butn, 44, 44);
+   lv_obj_add_style(play_butn, &style_butn_released, LV_PART_MAIN | LV_STATE_DEFAULT);
+   lv_obj_add_style(play_butn, &style_butn_pressed, LV_PART_MAIN | LV_STATE_PRESSED);   
+   lv_obj_set_style_bg_color(play_butn, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);   
+   lv_obj_set_style_border_color(play_butn, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_MAIN);   
+   lv_obj_set_style_radius(play_butn, 22, LV_PART_MAIN);   // make button a circle
+   lv_obj_align(play_butn, LV_ALIGN_CENTER, -37, 0);   
+   lv_obj_add_event_cb(play_butn, &butn_event_cb, LV_EVENT_CLICKED, NULL); 
+   lv_obj_set_ext_click_area(play_butn, EXT_CLICK_AREA);   
+
+   lv_obj_t *play_label = lv_label_create(play_butn);
+   lv_obj_center(play_label);
+   lv_obj_set_style_text_font(play_label, &lv_font_montserrat_22, LV_PART_MAIN);    
+   lv_label_set_text(play_label, LV_SYMBOL_PLAY);   
+
+   // Create PAUSE button
+   pause_butn = lv_btn_create(audio_cont);
+   lv_obj_set_size(pause_butn, 44, 44);
+   lv_obj_add_style(pause_butn, &style_butn_released, LV_PART_MAIN | LV_STATE_DEFAULT);
+   lv_obj_add_style(pause_butn, &style_butn_pressed, LV_PART_MAIN | LV_STATE_PRESSED);   
+   lv_obj_set_style_bg_color(pause_butn, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);   
+   lv_obj_set_style_border_color(pause_butn, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_MAIN);  
+   lv_obj_set_style_radius(pause_butn, 22, LV_PART_MAIN);   // make button a circle
+   lv_obj_align(pause_butn, LV_ALIGN_CENTER, 37, 0);   
+   lv_obj_add_event_cb(pause_butn, &butn_event_cb, LV_EVENT_CLICKED, NULL);   
+   lv_obj_set_ext_click_area(pause_butn, EXT_CLICK_AREA);   
+   
+   lv_obj_t *pause_label = lv_label_create(pause_butn);
+   lv_obj_center(pause_label);
+   lv_obj_set_style_text_font(pause_label, &lv_font_montserrat_22, LV_PART_MAIN);    
+   lv_label_set_text(pause_label, LV_SYMBOL_PAUSE);     
+
+   // Create STOP button
+   stop_butn = lv_btn_create(audio_cont);
+   lv_obj_set_size(stop_butn, 44, 44);
+   lv_obj_add_style(stop_butn, &style_butn_released, LV_PART_MAIN | LV_STATE_DEFAULT);
+   lv_obj_add_style(stop_butn, &style_butn_pressed, LV_PART_MAIN | LV_STATE_PRESSED);   
+   lv_obj_set_style_bg_color(stop_butn, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);   
+   lv_obj_set_style_border_color(stop_butn, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_MAIN);    
+   lv_obj_set_style_radius(stop_butn, 22, LV_PART_MAIN);   // make button a circle
+   lv_obj_align(stop_butn, LV_ALIGN_RIGHT_MID, 0, 0);   
+   lv_obj_add_event_cb(stop_butn, &butn_event_cb, LV_EVENT_CLICKED, NULL);    
+   lv_obj_set_ext_click_area(stop_butn, EXT_CLICK_AREA);   
+
+   lv_obj_t *stop_label = lv_label_create(stop_butn);
+   lv_obj_center(stop_label);
+   lv_obj_set_style_text_font(stop_label, &lv_font_montserrat_22, LV_PART_MAIN);    
+   lv_label_set_text(stop_label, LV_SYMBOL_STOP);   
+
+   // Create a chart to display segments of frequency spectrum
+#define CHART_POINTS       12   
+   rec_chart = lv_chart_create(parent);
+   lv_obj_set_size(rec_chart, 300, 100);
+   lv_chart_set_type(rec_chart, LV_CHART_TYPE_BAR);
+   lv_chart_set_axis_range(rec_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+   lv_chart_set_point_count(rec_chart, CHART_POINTS);
+   lv_obj_set_style_radius(rec_chart, 6, LV_PART_MAIN);
+   lv_obj_set_style_bg_opa(rec_chart, LV_OPA_TRANSP, LV_PART_MAIN);  
+   lv_obj_set_style_border_width(rec_chart, 0, LV_PART_MAIN);        
+   lv_obj_align(rec_chart, LV_ALIGN_CENTER, 0, 20);
+   // hide all grid lines
+   lv_chart_set_div_line_count(rec_chart, 0, 0);
+   // Add data series
+   rec_ser = lv_chart_add_series(rec_chart, lv_palette_lighten(LV_PALETTE_BLUE, 2), LV_CHART_AXIS_PRIMARY_Y);
+   // Inital series random values
+   for(uint16_t i = 0; i < CHART_POINTS; i++) {
+      lv_chart_set_next_value(rec_chart, rec_ser, (int32_t)lv_rand(1, 90));
+   }
+   lv_chart_refresh(rec_chart);    // Required after direct set
+
+   // Progress bar for recording and playback progress
+   progress_bar = lv_bar_create(parent);
+   lv_obj_set_size(progress_bar, 300, 10);
+   lv_slider_set_range(progress_bar, 0, 100);
+   lv_slider_set_value(progress_bar, 0, LV_ANIM_OFF); 
+   // lv_obj_clear_flag(progress_bar, (LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE)); // not scrollable 
+   lv_obj_set_style_bg_color(progress_bar, lv_palette_darken(LV_PALETTE_GREY, 1), LV_PART_MAIN);
+   lv_obj_set_style_bg_opa(progress_bar, LV_OPA_100, LV_PART_MAIN);
+   lv_obj_set_style_bg_color(progress_bar, lv_palette_main(LV_PALETTE_BLUE), LV_PART_INDICATOR);   
+   // lv_obj_set_style_bg_color(progress_bar, lv_palette_darken(LV_PALETTE_DEEP_ORANGE, 1), LV_PART_KNOB);   
+   lv_obj_set_style_border_width(progress_bar, 0, LV_PART_ANY);
+   lv_obj_set_style_anim_time(progress_bar, 500, LV_PART_MAIN);
+   lv_obj_align_to(progress_bar, audio_cont, LV_ALIGN_OUT_BOTTOM_MID, 0, 12);   
+
+   // Swipe label on the bottom
+   lv_obj_t *swipe_label2 = lv_label_create(parent);
+   lv_obj_set_size(swipe_label2, 120, 36);
+   lv_obj_center(swipe_label2);
+   lv_label_set_text(swipe_label2, LV_SYMBOL_LEFT " Swipe " LV_SYMBOL_RIGHT);
+   lv_obj_set_style_text_color(swipe_label2, lv_palette_lighten(LV_PALETTE_ORANGE, 3), LV_PART_MAIN);
+   lv_obj_set_style_text_align(swipe_label2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+   lv_obj_set_style_text_font(swipe_label2, &lv_font_montserrat_20, LV_PART_MAIN);   
+   lv_obj_align(swipe_label2, LV_ALIGN_BOTTOM_MID, 0, 0);   
+   
+   
+   // Timer to update the progress bar and the bar chart
+   rec_chart_timer = lv_timer_create([](lv_timer_t *timer) {
+   
+      uint16_t i, j;  
+      rec_status_t *rec_stat;
+      int32_t progress = 0;
+      static uint8_t blink_ctr = 0;
+      static bool blink_state = false;
+    
+      // only do the following if page == 2
+      if(lv_tileview_get_tile_act(tileview) == tv_demo_page2) { 
+         // for(i = 0; i < CHART_POINTS; i++) {
+         //    lv_chart_set_next_value(rec_chart, rec_ser, (int32_t)lv_rand(10, 80));
+         // }
+         // lv_chart_refresh(rec_chart);    // Required after direct set
+
+         rec_stat = audio.getRecordingStatus(); // see if we are recording
+         if((rec_stat->status & REC_STATUS_FRAME_AVAIL) > 0) {
+
+         } else if((rec_stat->status & REC_STATUS_REC_CMPLT) > 0) {
+            lv_obj_clear_state(play_butn, LV_STATE_DISABLED);  // enable play butn 
+         } 
+         if((rec_stat->status & REC_STATUS_RECORDING) > 0) {
+            progress = map(rec_stat->recorded_frames, 0, rec_stat->max_frames, 0, 100);
+            lv_slider_set_value(progress_bar, progress, LV_ANIM_ON); 
+         } 
+         if((rec_stat->status & REC_STATUS_PAUSED) > 0) {
+            if(++blink_ctr > 4) {
+               blink_ctr = 0;
+               blink_state ^= true;
+               if(!blink_state) {
+                  lv_obj_set_style_bg_color(pause_butn, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN); 
+               } else {
+                  lv_obj_set_style_bg_color(pause_butn, lv_palette_lighten(LV_PALETTE_GREY, 2), LV_PART_MAIN); 
+               }
+            }
+         } else {
+            lv_obj_set_style_bg_color(pause_butn, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);
+         }
+      }
+      vTaskDelay(2);
+   }, 100, NULL); 
+}
+
+
+/********************************************************************
+ * Demo Page 3
+ */
+void demo_page3(lv_obj_t *parent)
 {
    // Create tone ON/OFF button
    demo_butn1 = lv_btn_create(parent);
@@ -374,30 +541,32 @@ void demo_page2(lv_obj_t *parent)
    lv_obj_set_style_text_color(tone_vol_slider_label, lv_color_white(), LV_PART_MAIN);
    lv_obj_align_to(tone_vol_slider_label, tone_vol_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 12);    
 
-   lv_obj_t *swipe_label2 = lv_label_create(parent);
-   lv_obj_set_size(swipe_label2, 120, 36);
-   lv_obj_center(swipe_label2);
-   lv_label_set_text(swipe_label2, LV_SYMBOL_LEFT " Swipe " LV_SYMBOL_RIGHT);
-   lv_obj_set_style_text_color(swipe_label2, lv_palette_lighten(LV_PALETTE_ORANGE, 3), LV_PART_MAIN);
-   lv_obj_set_style_text_align(swipe_label2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-   lv_obj_set_style_text_font(swipe_label2, &lv_font_montserrat_20, LV_PART_MAIN);   
-   lv_obj_align(swipe_label2, LV_ALIGN_BOTTOM_MID, 0, 0);   
+   lv_obj_t *swipe_label3 = lv_label_create(parent);
+   lv_obj_set_size(swipe_label3, 120, 36);
+   lv_obj_center(swipe_label3);
+   lv_label_set_text(swipe_label3, LV_SYMBOL_LEFT " Swipe " LV_SYMBOL_RIGHT);
+   lv_obj_set_style_text_color(swipe_label3, lv_palette_lighten(LV_PALETTE_ORANGE, 3), LV_PART_MAIN);
+   lv_obj_set_style_text_align(swipe_label3, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+   lv_obj_set_style_text_font(swipe_label3, &lv_font_montserrat_20, LV_PART_MAIN);   
+   lv_obj_align(swipe_label3, LV_ALIGN_BOTTOM_MID, 0, 0);   
   
 }
 
 
 /********************************************************************
- * Demo Page 3
+ * Demo Page 4
  */
-void demo_page3(lv_obj_t *parent)
+void demo_page4(lv_obj_t *parent)
 { 
    // Create a chart to display audio/FFT from the microphone
    chart = lv_chart_create(parent);      
    lv_obj_set_size(chart, 320, 165); //316, 120);    
-   lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, -256, 256);
+   lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, -512, 512);
+   lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, 0, 512); // FFT values   
    lv_obj_set_style_radius(chart, 3, LV_PART_MAIN);
    lv_obj_align(chart, LV_ALIGN_TOP_MID, 0, 0);
    lv_chart_set_type(chart, LV_CHART_TYPE_LINE);   // Show lines and points too
+   lv_obj_set_style_size(chart, 0, 0, LV_PART_INDICATOR);  // hides the points on the line
    lv_obj_set_scrollbar_mode(chart, LV_SCROLLBAR_MODE_OFF);     // don't show scrollbars on non-scrolling pages
    lv_obj_clear_flag(chart, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -405,21 +574,24 @@ void demo_page3(lv_obj_t *parent)
    ser2 = lv_chart_add_series(chart, lv_palette_main(LV_PALETTE_LIGHT_BLUE), LV_CHART_AXIS_SECONDARY_Y);   
 
    // X axis as a scale aligned to the bottom 
+   static const char * tick_labels[] = {"0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", ""};
    lv_obj_t *x_scale = lv_scale_create(parent);
    lv_scale_set_mode(x_scale, LV_SCALE_MODE_HORIZONTAL_TOP);
    lv_obj_set_size(x_scale, 315, 24);
    lv_scale_set_range(x_scale, 0, 8); 
    lv_scale_set_total_tick_count(x_scale, 9);            // match point count
    lv_scale_set_major_tick_every(x_scale, 1);            // every tick is major
+   lv_scale_set_text_src(x_scale, tick_labels);   
    lv_scale_set_label_show(x_scale, true);
    lv_obj_set_style_pad_hor(x_scale, lv_chart_get_first_point_center_offset(chart), 0);
    lv_obj_align_to(x_scale, chart, LV_ALIGN_OUT_BOTTOM_MID, 0, -4);
    lv_obj_set_style_bg_opa(x_scale, LV_OPA_100, LV_PART_MAIN);
 
-   // add switch to toggle between sinewave source and microphone data
+   // Add switch to toggle between sinewave source and microphone data
    chart_sw = lv_switch_create(parent);
    lv_obj_add_event_cb(chart_sw, switch_event_handler, LV_EVENT_ALL, NULL);
    lv_obj_remove_state(chart_sw, LV_STATE_CHECKED);
+   lv_obj_set_ext_click_area(chart_sw, 6);
    lv_obj_align_to(chart_sw, x_scale, LV_ALIGN_OUT_BOTTOM_MID, 0, 9);      
 
    lv_obj_t *sw_label1 = lv_label_create(parent);
@@ -435,44 +607,48 @@ void demo_page3(lv_obj_t *parent)
    /**
     * Prepare buffers for sinewave simulation
     */
-#define N_SAMPLES 1024    // Must be a power of 2, e.g., 512, 1024, 2048, 4096
+#define N_SAMPLES    DEFAULT_SAMPLES_PER_FRAME    // Must be a power of 2, e.g., 512, 1024, 2048, 4096
+#define _FFT_SIZE    1024
    // int16_t *mic_bufr = (int32_t *)heap_caps_malloc(N_SAMPLES * sizeof(int16_t), MALLOC_CAP_SPIRAM); 
    disp_bufr = (lv_coord_t *)heap_caps_malloc(N_SAMPLES * sizeof(lv_coord_t), MALLOC_CAP_SPIRAM);   
    fft_bufr = (lv_coord_t *)heap_caps_malloc(N_SAMPLES * sizeof(lv_coord_t), MALLOC_CAP_SPIRAM); 
 
    // get info from fft to set up buffers
-   fft_table_t *fft_table = fft.init(N_SAMPLES, N_SAMPLES, SPECTRAL_SLIDING);
+   // fft_table_t *fft_table = fft.init(N_SAMPLES, N_SAMPLES, SPECTRAL_SLIDING);
+   fft_table_t *fft_table = fft.init(_FFT_SIZE, N_SAMPLES, SPECTRAL_AVERAGE);
+      Serial.printf("size_input_bufr=%d, hop size=%d, sliding frames=%d\n)", fft_table->size_input_bufr, fft_table->hop_size, fft_table->num_sliding_frames);
 
    /**
     * @brief Create in-place timer to send data to the chart
     */
    chart_timer = lv_timer_create([](lv_timer_t *timer) {
-      static float *working_buffer = (float *)heap_caps_malloc((N_SAMPLES * sizeof(float)), MALLOC_CAP_SPIRAM); 
-      static float *input = (float *)heap_caps_malloc((N_SAMPLES * sizeof(float)), MALLOC_CAP_SPIRAM);  
+      static float *working_buffer = (float *)heap_caps_malloc((_FFT_SIZE * sizeof(float)), MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT); 
+      static float *input = (float *)heap_caps_malloc((N_SAMPLES * sizeof(float)) * 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT);  
       static int16_t *mic_bufr = (int16_t *)heap_caps_malloc(N_SAMPLES * sizeof(int16_t), MALLOC_CAP_SPIRAM);          
       uint16_t i, j;  
-      static float sine_freq = 500; // 1kHz tone  
+      static float sine_freq = 500; // starting value of frequency sweep  
       float phase = 0.0f;   
       rec_command_t rec_command; 
-      rec_status_t rec_status_cb;
+      rec_status_t *pRec_status;
 
-      if(lv_tileview_get_tile_act(tileview) == tv_demo_page3) { 
-         // if chart sw is not checked, display sinewave data 
+      if(lv_tileview_get_tile_act(tileview) == tv_demo_page4) { 
+         // if chart sw is not checked, display generated sinewave data 
          if(!lv_obj_has_state(chart_sw, LV_STATE_CHECKED)) {
             // Create sinewave in bufr
             phase = 0.0f;
-            const float PHASE_STEP = TWO_PI * sine_freq / AUDIO_SAMPLE_RATE;   // sine freq defined here
+            const float phase_step = TWO_PI * sine_freq / AUDIO_SAMPLE_RATE;   // sine freq defined here
             for (int j = 0; j < N_SAMPLES; j++) {
-               input[j] = sinf(phase) * 0.333;
-               phase += PHASE_STEP;
+               input[j] = sinf(phase); // * 0.333;
+               phase += phase_step;
             }
             // Perform FFT on the sinewave data
             fft.compute(input, working_buffer);
 
-            for(i=0; i<N_SAMPLES; i++) {
-               fft_bufr[i] = int(working_buffer[i]);
+            // Convert sinewave data from float to int16_t
+            for(i=0; i<_FFT_SIZE; i++) {
+               fft_bufr[i] = int(working_buffer[i] * 2);
             }
-            lv_chart_set_point_count(chart, N_SAMPLES/2);
+            lv_chart_set_point_count(chart, _FFT_SIZE/4);
             lv_chart_set_ext_y_array(chart, ser2, (lv_coord_t *)fft_bufr);     
             
             sine_freq += 5;
@@ -481,24 +657,18 @@ void demo_page3(lv_obj_t *parent)
 
          // Start audio recording with a single frame.
          } else { 
-            rec_command.mode = REC_MODE_START;
-            rec_command.data_dest = mic_bufr;   // audio data goes into here
-            rec_command.filepath = NULL;
-            rec_command.duration_secs = 0.0;    // duration = 0 will record 1 frame
-            rec_command.samples_per_frame = N_SAMPLES;  // num 16 bit samples per frame
-            rec_command.use_lowpass_filter = false;
-            xQueueSend( h_QueueAudioRecCommand, ( void * ) &rec_command, ( TickType_t ) 1000 );
+            audio.startRecording(0.0, false, false, NULL, mic_bufr, N_SAMPLES);
 
-            // Wait for the recording to complete
+            // Now wait for the recording to complete
             while(true) {
-               if(xQueueReceive( h_QueueAudioRecStatus, ( void * ) &rec_status_cb, 
-                     ( TickType_t ) 1000 ) == pdTRUE) {
-                  break;
+               pRec_status = audio.getRecordingStatus();
+               if((pRec_status->status & REC_STATUS_REC_CMPLT) > 0) {
+                     break;
                }
             }
 
             // Convert integer mic data to float for fft
-            for(i=0; i<N_SAMPLES; i++) {
+            for(i=0; i<_FFT_SIZE; i++) {
                input[i] = float(mic_bufr[i]);
             }
 
@@ -506,10 +676,10 @@ void demo_page3(lv_obj_t *parent)
             fft.compute(input, working_buffer);
 
             // Convert fft output data to lv_coord data for chart display
-            for(i=0; i<N_SAMPLES; i++) {
-               fft_bufr[i] = int(working_buffer[i] / 1000);
+            for(i=0; i<_FFT_SIZE; i++) {
+               fft_bufr[i] = int(working_buffer[i] / 666);
             }            
-            lv_chart_set_point_count(chart, N_SAMPLES/2);
+            lv_chart_set_point_count(chart, _FFT_SIZE/4);
             lv_chart_set_ext_y_array(chart, ser2, (lv_coord_t *)fft_bufr);  
          }
       }
@@ -577,6 +747,7 @@ void butn_event_cb(lv_event_t * e)
 
    lv_event_code_t code = lv_event_get_code(e);
    lv_obj_t *butn = (lv_obj_t *)lv_event_get_target(e);
+   rec_command_t rec_cmd;
 
    if(butn == demo_butn1 && code == LV_EVENT_CLICKED) {
       db1_latched = !db1_latched; // Toggle state
@@ -591,10 +762,28 @@ void butn_event_cb(lv_event_t * e)
          lv_label_set_text(lv_obj_get_child(butn, 0), "Tone ON");
          audio.stopTone();
       }
-   }
-   else if(butn == next_butn) {
-      lv_obj_set_tile(tileview, tv_demo_page2, LV_ANIM_ON);   // default starting page
-   }
+   } else if(butn == record_butn) {
+      lv_obj_add_state(play_butn, LV_STATE_DISABLED);    // lock out play butn
+      audio.startRecording(8.0, true, true, "/demo_rec1.wav", NULL, DEFAULT_SAMPLES_PER_FRAME, 3000.0);
+   } else if(butn == stop_butn) {
+      lv_obj_clear_state(play_butn, LV_STATE_DISABLED);  // enable all butn's      
+      lv_obj_clear_state(record_butn, LV_STATE_DISABLED);  // enable all butn's    
+      audio.stopRecording();
+   } else if(butn == play_butn) {
+      lv_obj_add_state(record_butn, LV_STATE_DISABLED);  // lock out record butn
+      audio.playWavFile("/demo_rec1.wav", 66);
+      lv_obj_clear_state(record_butn, LV_STATE_DISABLED);  // lock out record butn      
+   } else if(butn == pause_butn) {
+      rec_status_t *rec_stat = audio.getRecordingStatus();  // what is recorder doing?
+      if((rec_stat->status & REC_STATUS_PAUSED) > 0) {  // if paused, continue recording
+         // Continue recording - params are ignored
+         audio.startRecording(); //8.0, true, false, "/demo_rec1.wav", NULL, DEFAULT_SAMPLES_PER_FRAME);
+      } else if((rec_stat->status & REC_STATUS_RECORDING) > 0) {   // if recording, enter pause mode
+         lv_obj_add_state(play_butn, LV_STATE_DISABLED);    // lock out record butn
+         // lv_obj_add_state(record_butn, LV_STATE_DISABLED);  // lock out record butn      
+         audio.pauseRecording();
+      }
+   }   
 }
 
 
@@ -608,6 +797,8 @@ void tileview_change_cb(lv_event_t *e)
    lv_obj_t *_tileview = (lv_obj_t *)lv_event_get_target(e);
    lv_obj_t *cur_tile = lv_tileview_get_tile_act(_tileview);    // active tile (page)
    lv_event_code_t code = lv_event_get_code(e);
+
+   // Tile (demo page) has changed, do something!
 }
 
 /********************************************************************

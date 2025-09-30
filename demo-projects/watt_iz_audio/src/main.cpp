@@ -44,11 +44,17 @@ void setup(void)
    Serial.println("");
 
    /**
+    * @brief Show compiler Version
+    */
+   Serial.print("__cplusplus = ");
+   Serial.println((long)__cplusplus);     // expect 202002 for C++20
+
+   /**
     * Initialize NeoPixel lib
     */
    strip.Begin();
-   strip.SetPixelColor(0, gray);   
-   strip.Show();                          // leds off
+   strip.SetPixelColor(0, gray);          // only one neopixel 
+   strip.Show();                          // send new color(s)
 
    /**
     * Initialize audio microphone & speaker drivers
@@ -70,9 +76,16 @@ void setup(void)
    }       
 
    /**
-    * Initialize SD Card
+    * Initialize PSRAM
     */
-      /**
+   psramInit();
+   Serial.printf("Total heap: %d\n", ESP.getHeapSize());
+   Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
+   Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
+   Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());   
+   Serial.println("");
+
+   /**
     * Try to initialize the SD card
     */
    bool sd_ok;;
@@ -131,6 +144,9 @@ void setup(void)
             Serial.println("ERROR: SD Card is full - no space available!");
             break;
       }
+      String output;
+      sdcard.listDir("/", output, 1);
+      Serial.println(output);
    } else {
       Serial.println("Error: SD Card Initialization Failed!");
       strip.SetPixelColor(0, red);   
@@ -161,12 +177,18 @@ void loop()
       lv_timer_ms = millis();
    }
 
-   if(millis() - gp_timer > 1000) {
+   if(millis() - gp_timer > 20000) {
       gp_timer = millis();
-      if(!once) {
-         once = true;
-         audio.playTone(1000, AUDIO_SAMPLE_RATE, 500, 0.61); 
-      }
+      // if(!once) {
+      //    once = true;
+      //    audio.playTone(1000, AUDIO_SAMPLE_RATE, 500, 0.61); 
+      // }
+      Serial.printf("Total heap: %d\n", ESP.getHeapSize());
+      Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
+      Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
+      Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());   
+      Serial.println("");
+
    }
 
 }
