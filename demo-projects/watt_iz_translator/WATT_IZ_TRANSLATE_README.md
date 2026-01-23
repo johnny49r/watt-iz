@@ -17,6 +17,15 @@ Also (as common to other projects) all WiFi credentials and API keys are kept in
 file on the SD card ("wattiz_config.json"). 
 See the 'watt_iz_files' project for SD card formatting and generating the JSON config file.
 
+## How to Download Demo Firmware
+Demo's and apps can be downloaded using the SD card. If the Watt-IZ has a demo or app running, the
+device will have code necessary to download new firmware. Perform the following:
+1) Turn Watt-IZ power off and remove the SD card.
+2) Put the SD card into a PC or suitable phone that can edit SD card files.
+3) Copy the 'firmware.bin' file in this repository to the '/update' folder on the SD card:
+(/update/firmware.bin).
+5) Replace the SD card in the Watt-IZ, power up, and follow directions on the pop-up menu.
+
 ## Project Development Notes
 This project is designed to be developed, compiled, and downloaded using the Visual Studio 
 Code IDE with the PlatformIO extension installed. The first time this project is installed 
@@ -28,15 +37,15 @@ For this project copy lv_conf.h from /common_files/lvgl and paste it into the pr
 under .pio/libdeps/lvgl.
 
 ## Project Operation
-After booting swipe to the right to expose the language selection page. Press the 'Translate'
-button to begin a six second recording. When the recording has finished the voice recording 
-will be translated by Google Speech To Text service. If the text is valid it will be sent to 
-the Google Translate service. The output is text (in the "to" language). This text is then 
-sent to Google Text To Speech service to provide voice in the desired language.
-When the translation is complete, the "from" and "to" text will be displayed on a separate 
+After booting, swipe to the right to expose the language selection page. Press the 'Translate'
+button to begin a six second recording of your voice. When the recording has finished the voice 
+recording will be translated by Google Speech-To-Text service. Text will then be shown in the "FROM" 
+text box and sent to Google's Translate service. The translated text will be shown in the "TO" text 
+box. This text is then sent to Google Text-To-Speech service to provide voice output in the selected 
+language. When the translation is complete, the "from" and "to" text will be displayed on a separate 
 page. Scroll up to return to the language selector page.
 
-## Adding Additional Languages
+## Adding Additional Languages to the Source Code
 Information about each language is contained in an array called "LanguageArray". Each element in
 the array is a structure of type 'language_info_t' whose elements are:
 * language_name : Name of the language. Example: "English", "Hindi(India)", etc.
@@ -52,8 +61,8 @@ the array is a structure of type 'language_info_t' whose elements are:
     - Range from **0.0** (very slow speech rate) to **1.0** (fastest speaking rate). Default = 1.0.
 
 ### Creating a New Font
-LVGL allows custom fonts created by converting a *TrueType* font to a **.c* file that is compiled 
-into the project code.
+LVGL allows custom fonts created by converting a *TrueType* (TTF) font to a **.c* file that is 
+compiled into the project code.
 The conversion is generally done on a computer which has the cli *lv_font_conv* installed. 
 See the */common_files/Fonts* folder for info and examples of converting TTF to *.c.
 When a new .c file is generated, the font file is placed in the *src/fonts* folder in the 
@@ -62,7 +71,7 @@ The code declares a font for use with the statement: *LV_FONT_DECLARE(noto_hindi
 The new font can be referenced in the LanguageArray so the output text will be correct for the
 selected language.
 **NOTE:** There may be difficuty with languages such as Chinese or Japanese that have a huge number 
-of symbols in their written language. Very large font files may not fit in this environments 
+of symbols in their written language. Very large font files may not fit in this environment 
 with moderate resources avialable.
 
 
