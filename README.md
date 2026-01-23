@@ -63,6 +63,12 @@ The microphone is mounted directly to the PCB and provides quality 16-bit audio 
 ### NEOPIXEL Status LED
 A WS2812B multicolor status LED provides a full 24 bit color spectrum and variable intensity.
 
+### More Information
+See the file in the Watt-IZ root directory "Watt-IZ Introduction.pdf.
+
+### To Purchase
+Go here: [https://www.tindie.com/products/abbycus/watt-iz-speech-enabled-embedded-hardware/]
+
 ## MIT License
 The software examples are free for use, modification, and distribution. See the LICENSE file for details. 
 John F Hoeppner, Watt-IZ, Abbycus 2025.
