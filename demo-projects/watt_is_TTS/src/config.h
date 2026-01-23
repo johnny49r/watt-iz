@@ -1,0 +1,166 @@
+/**
+ * globals.h 
+ */
+#pragma once
+
+// Includes
+#include <Arduino.h>
+#include "SPI.h"
+#include "Wire.h"
+#include "ArduinoNvs.h"                   // Non volatile storage - saves data in flash
+#include "WiFi.h"
+
+//###################################################################
+// USER HARDWARE AND GEOMETRY OPTIONS 
+//###################################################################
+#define USE_CAPACITIVE_TOUCH_SCREEN    1  // enables capacitive touch screen
+// #define USE_RESISTIVE_TOUCH_SCREEN      1   // enables resistive touch screen
+
+/**
+ * Screen rotation options (0..3)
+ * 0, 2 = portrait orientation N/S
+ * 1, 3 = landscape orientation E/W
+ */
+#define SCREEN_ROTATION             1     // 0..3 rotate clockwise
+
+// define screen width and height depending on rotation (portrait or landscape)
+#if (SCREEN_ROTATION == 0 || SCREEN_ROTATION == 2)
+    #define SCREEN_WIDTH            240 
+    #define SCREEN_HEIGHT           320 
+#else
+    #define SCREEN_WIDTH            320
+    #define SCREEN_HEIGHT           240
+#endif
+
+//###################################################################
+// USER SOFTWARE OPTIONS 
+//###################################################################
+#define SOFTWARE_VERSION            "Watt-IZ Ver 0.2 Abbycus 2025"
+
+
+//###################################################################
+// ENABLE SPEECH SERVICES
+//###################################################################
+// #define USE_CHAT_GPT_SERVICE        1
+// #define USE_SPEECH_TO_TEXT_SERVICE  1
+#define USE_TEXT_TO_SPEECH_SERVICE  1
+
+
+//###################################################################
+// GPIO ASSIGNMENTS 
+//###################################################################
+// #define BOARD_VER_1_1                  1
+// #define BOARD_VER_1_2                  1
+#define BOARD_VER_1_3                   1
+
+// Pin assignments for PCB version 1.1
+#if defined (BOARD_VER_1_1)
+   #define PIN_NEO_PIXEL               18    // WS2812 NEOPIXEL serial pin
+   #define PIN_SD_CARD_DETECT          46    // using one of the strapping pins - no external P/U
+   // SPI bus
+   #define PIN_SPI_CLK                 38
+   #define PIN_SPI_MISO                41
+   #define PIN_SPI_MOSI                40
+   // LCD control GPIO's
+   #define PIN_LCD_CS                  47
+   #define PIN_LCD_BKLT                45
+   #define PIN_LCD_DC                  48
+   #define PIN_LCD_TCS                 39
+   #define PIN_LCD_TIRQ                42
+   // I2C bus
+   #define PIN_I2C_SCL                 8
+   #define PIN_I2C_SDA                 7
+   // SD MMC bus                    
+   #define PIN_MMC_CLK                 11
+   #define PIN_MMC_CMD                 12
+   #define PIN_MMC_D0                  10
+   #define PIN_MMC_D1                  9
+   #define PIN_MMC_D2                  14
+   #define PIN_MMC_D3                  13
+   #define PIN_SDCARD_PWR              21
+   // Microphone I2S bus
+   #define PIN_MIC_I2S_WS              4
+   #define PIN_MIC_I2S_DOUT            5
+   #define PIN_MIC_I2S_BCLK            6
+   // Speaker I2S bus
+   #define PIN_SPKR_I2S_WS             15
+   #define PIN_SPKR_I2S_DIN            16
+   #define PIN_SPKR_I2S_BCLK           17
+#endif
+
+// Pin assignments for PCB version 1.2
+#if defined(BOARD_VER_1_2)
+   #define PIN_NEO_PIXEL                 8
+   #define PIN_SD_CARD_DETECT            46
+   #define PIN_SPI_CLK                   38
+   #define PIN_SPI_MISO                  41
+   #define PIN_SPI_MOSI                  40
+   #define PIN_LCD_CS                    47
+   #define PIN_LCD_BKLT                  45
+   #define PIN_LCD_DC                    48
+   #define PIN_LCD_TCS                   39
+   #define PIN_LCD_TIRQ                  42
+   // I2C bus
+   #define PIN_I2C_SCL                   18
+   #define PIN_I2C_SDA                   7
+   // SD MMC bus                    
+   #define PIN_MMC_CLK                   11
+   #define PIN_MMC_CMD                   12
+   #define PIN_MMC_D0                    10
+   #define PIN_MMC_D1                    9
+   #define PIN_MMC_D2                    14
+   #define PIN_MMC_D3                    13
+   #define PIN_SDCARD_PWR                21
+   // Microphone I2S bus
+   #define PIN_MIC_I2S_WS                4
+   #define PIN_MIC_I2S_DOUT              5
+   #define PIN_MIC_I2S_BCLK              6
+   // Speaker I2S bus
+   #define PIN_SPKR_I2S_WS               15
+   #define PIN_SPKR_I2S_DIN              16
+   #define PIN_SPKR_I2S_BCLK             17    
+   // ADC pins
+   #define PIN_BATV_ADC                  1
+   #define PIN_EXTPWR_ADC                2
+#endif
+
+// Pin assignments for PCB version 1.3
+#if defined(BOARD_VER_1_3)
+   #define PIN_NEO_PIXEL                 8
+   #define PIN_SD_CARD_DETECT            21
+   #define PIN_SPI_CLK                   38
+   #define PIN_SPI_MISO                  41
+   #define PIN_SPI_MOSI                  40
+   #define PIN_LCD_CS                    47
+   #define PIN_LCD_BKLT                  45
+   #define PIN_LCD_DC                    48
+   #define PIN_LCD_TCS                   39
+   #define PIN_LCD_TIRQ                  42
+   // I2C bus
+   #define PIN_I2C_SCL                   18
+   #define PIN_I2C_SDA                   7
+   // SD MMC bus                    
+   #define PIN_MMC_CLK                   11
+   #define PIN_MMC_CMD                   12
+   #define PIN_MMC_D0                    10
+   #define PIN_MMC_D1                    9
+   #define PIN_MMC_D2                    14
+   #define PIN_MMC_D3                    13
+
+   // Microphone I2S bus
+   #define PIN_MIC_I2S_WS                4
+   #define PIN_MIC_I2S_DOUT              5
+   #define PIN_MIC_I2S_BCLK              6
+
+   // Speaker I2S bus
+   #define PIN_SPKR_I2S_WS               15
+   #define PIN_SPKR_I2S_DIN              16
+   #define PIN_SPKR_I2S_BCLK             17    
+   // ADC pins
+   #define PIN_BATV_ADC                  1
+   #define PIN_BATCHG_ADC                2
+
+   #define PIN_RST_NA                    -1
+#endif
+
+
