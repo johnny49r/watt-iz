@@ -1,9 +1,0 @@
-To convert a .ttf font file to a *.c file for use in LVGL projects:
-1) Open terminal and paste the following text:
-
-lv_font_conv --font "NotoSansThai-Regular.ttf"   --size 20 --bpp 4 --format lvgl   --range 0x0E00-0x0E7F,0x0020-0x007E   --no-compress   --output noto_thai_20.c
-
-2) Change the --font to "/path/whatever_font.ttf".
-3) Change --size to be the scaled size of the font in the .c file. Example = 20.
-4) Change --output (name of *.c file). Example - noto_thai_20.c.
-5) Press enter to convert.
