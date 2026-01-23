@@ -10,7 +10,16 @@ Enabled Development Board.
 
 ## Software Requirements
 - Valid google API key to access Speech-To-Text service. To obtain a valid API key see the
-**WATT_IZ_API_KEYS.md** file. 
+**WATT_IZ_API_KEYS.md** file.
+
+## How to Download Demo Firmware
+Demo's and apps can be downloaded using the SD card. If the Watt-IZ has a demo or app running, the
+device will have code necessary to download new firmware. Perform the following:
+1) Turn Watt-IZ power off and remove the SD card.
+2) Put the SD card into a PC or suitable phone that can edit SD card files.
+3) Copy the 'firmware.bin' file in this repository to the '/update' folder on the SD card:
+(/update/firmware.bin).
+5) Replace the SD card in the Watt-IZ, power up, and follow directions on the pop-up menu.
 
 ## Instructions
 1) After the WiFi has connected to your router the WiFi icon on the upper left of the display 
