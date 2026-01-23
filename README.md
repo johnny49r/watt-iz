@@ -4,14 +4,14 @@
 The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. See PCB section for mechanical details. The
 following describes the hardware capabilities of each major section. 
 
-### Micro Controller Unit (MCU) 
+### CPU 
 The system is based on the Expressif ESP32-S3 Wroom-1-N16R8 System On Chip (SOC). The variant used in this
-design contains 16MB of flash program storage and 8MB of pseudo-static RAM as well as 384Kbytes of SRAM. 
-The ESP32 is a dual core 32 bit microprocessor running at 240 Mhz. The -S3 variant also has some DSP functions to
+design contains 16MB of flash program storage and 8MB of pseudo-static RAM as well as 512 Kbytes of SRAM. 
+The ESP32 is a dual core 32 bit microprocessor running at 240 Mhz. The -S3 variant also has DSP functions to
 accelerate FFT's, perform audio filtering, and array processing.
 
 The SOC features WiFi and bluetooth connectivity as well as it's own ESP-NOW proprietary communication which does 
-not require a router or internet connection to communicate.
+not require a router or internet connection to communicate with other devices using the same protocol.
 
 The many features of this SOC can be found [here:]https://products.espressif.com/#/product-selector?names=&filter=%7B%22Series%22%3A%5B%22ESP32-S3%22%5D%7D
 
@@ -48,8 +48,7 @@ SDHC 32 GB class 10.
 
 ### 2.8" TFT Touch Screen Display
 The hardware mounts and supports a 2.8" TFT screen using the ILI9341 graphics controller with SPI interface.
-Either resistive touch screen or capacitive touch screens are supported. Capacitive touch is more sensitive 
-and provides smoother operation but does not work with a stylus. 
+Capacitive touch screens are supported by default.  
 Screen brightness can be controlled using PWM (see examples).
 
 ### Wake From Deep Sleep
@@ -58,12 +57,12 @@ See examples for how to implement this in software.
 
 ### Audio Hardware 
 The Watt-IZ hardware is speech enabled and features a built-in I2S MEMS microphone (ICS-43434) and a high efficiency 3W class-D 
-audio amplifier (MAX-98357) used to drive a 4 ohm speaker. 
-The microphone is mounted directly to the PCB and provides quality audio for recording or speech transcription. 
+audio amplifier (MAX-98357) optimized to drive a 4 ohm speaker. 
+The microphone is mounted directly to the PCB and provides quality 16-bit audio for recording or speech transcription. 
 
 ### NEOPIXEL Status LED
 A WS2812B multicolor status LED provides a full 24 bit color spectrum and variable intensity.
 
 ## MIT License
-The software examples are free for use, modification, and distribution. See the LICENSE file for details. For commercial use
-I request an acknowledgement of the source. John F Hoeppner, Watt-IZ, Abbycus 2025.
+The software examples are free for use, modification, and distribution. See the LICENSE file for details. 
+John F Hoeppner, Watt-IZ, Abbycus 2025.
