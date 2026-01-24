@@ -16,6 +16,8 @@ modify firmware can use a normal PC-based development workflow.
 Note that some demo’s require API keys from google and openAI to access cloud services such as speech-to-text, 
 text-to-speech, translate, and chat GPT access. The Watt-IZ user manual details how to acquire and install API keys. 
 
+
+
 ## Hardware Features
 The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. See PCB section for mechanical details. The
 following describes the hardware capabilities of each major section. 
@@ -66,86 +68,59 @@ All demo's and apps require functional Watt-IZ hardware, especially the graphics
 require a connected speaker while others may require an API key for speech conversion, language translation, or chatbot services  
 (see the readme file WATT_IZ_API_KEYS.md for details).
 
-### What Can It Do?
-#### GUI Functions (see demo watt_iz_graphics)
+### GUI Functions (see demo watt_iz_graphics)
   - GUI basic widgets and touch screen.
   - Advanced drag & drop example.
   - Create and display QR codes.
   - PWM backlight LED control.
-#### Storage and File System (see demo watt_iz_files).
+### Storage and File System (see demo watt_iz_files).
   - Format an SD card with FAT32.
   - Utility to create a system credential JSON file using a text file with your WiFi info and API keys.
   - Display file hierarchy.
   - Measure SD card write and read speeds in the hardware environment.
   - Load demo programs and apps directly from the SD card. All demo’s have code example of how to implement this feature.
   - Use case demo’s of Non Volatile Storage using the ArduinoNVS library.
-#### Speech and Audio Functions
+### Speech and Audio Functions
   - Record and playback WAV (uncompressed) files. See demo watt_iz_audio.
   - Audio processing (low pass filtering, FFT).
   - Streaming (works with ESP-NOW to stream audio to a peer).
   - Speech detection (use FFT and Formant analysis to detect valid speech vs other noises).
   - Sinewave frequency and ring tone functions.
-#### Real Time Clock & Alarm (see demo watt_iz_clock)
+### Real Time Clock & Alarm (see demo watt_iz_clock)
   - Demonstrates timekeeping functions (year, month, day, hour, minute, second).
   - Time synchronization with internet NTP server.
   - Calender with reverse and forward month scrolling.
   - Simple alarm trigger.
-#### AI Cloud Demo's
+### AI Cloud Demo's
   - Google Speech to Text service (see demo watt_iz_STT).
   - Google Text to Speech service (see demo watt_iz_TTS).
   - Google language translate service (see demo watt_iz_translator).
   - OpenAI Chat GPT service (see demo watt_iz_chatgpt).
-#### Intent Classification / Command Parsing
-  - Break speech into intent – action – target categories.
+### Intercom Demo
+  - Uses broadcast to discover other devices.
+  - Uses MAC addressing for peer-to-peer communication.
+  - Demonstrates writing and reading audio streams.
+### Intent Classification / Command Parsing
+  - Break speech into intent – action – target categories (*** coming soon).
 
 ## Firmware Development 
 USB-Serial port via a micro-USB connector. All hardware necessary to interface with an Integrated Development 
 Environment (IDE) such as Visual Studio Code. Auto download mode is supported – no buttons to push to initiate firmware download.
 
-### Power Input
-The board is designed to operate from a standard USB-C port. A typical 5V @ 2A AC adapter (phone charger) can be used 
-to power the board. Additionally the board can be powered from a single Lithium-Ion 3.7V battery. Recommended battery 
-capacity is 2000 mAH. This will provide several hours of operation at full power operation.
-The battery is connected to the board via a two pin header located next to the USB-C connector. Note the board has 
-reverse polarity protection in case the battery is reversed.
+## Power 
+The board is designed to operate from a standard USB-C port. A typical 5V @ 2A AC power source (phone charger) can be used 
+to power the board. Additionally the board can be powered from a single Lithium-Ion 3.7V battery to provide 
+several hours of operation at full power operation. The battery is connected to the board via a two pin header 
+located next to the USB-C connector. Note the board has reverse polarity protection in case the battery is reversed.
 A 900 mA charger circuit is provided to charge the battery when the AC adapter is powering the board. A charge status 
 LED indicates charging (or full). Power ON/OFF switch is located on the front edge of the board.
 The battery voltage and charge current are exposed to the MCU's ADC for applications requiring power monitoring, 
 battery State Of Charge, and Time To Charge calculation.
 
-High efficiency switching regulators provide precise voltage and maximizes battery life.
-
-### Real Time Clock 
-The board contains a real-time clock chip (DS3231) which is backed up by a CR2032 coin cell. The battery life is at least 
-2 years when no power is applied to the board (chip powered by coin cell only).
-Date and time are kept by the RTC chip as well as alarm functionality. The RTC can be programmed manually or via internet 
-(see examples).
-The RTC chip also provides substrate temperature (board temperature) in degrees C.
-
-### SD Card Memory
-The board has a micro-SD card slot which can use a SDHC or SDXC card. The SD interface is 4-bit MMC for maximum performance. 
-Large capacity cards (up to 256 GB) are supported as long as they are formatted with FAT32. The recommended card is an
-SDHC 32 GB class 10. 
-
-### 2.8" TFT Touch Screen Display
-The hardware mounts and supports a 2.8" TFT screen using the ILI9341 graphics controller with SPI interface.
-Capacitive touch screens are supported by default.  
-Screen brightness can be controlled using PWM (see examples).
-
-### Wake From Deep Sleep
-The board features a 'Wake' button which can be used as a general purpose button or as a Wake from deep sleep button.
-See examples for how to implement this in software.
-
-### Audio Hardware 
-The Watt-IZ hardware is speech enabled and features a built-in I2S MEMS microphone (ICS-43434) and a high efficiency 3W class-D 
-audio amplifier (MAX-98357) optimized to drive a 4 ohm speaker. 
-The microphone is mounted directly to the PCB and provides quality 16-bit audio for recording or speech transcription. 
-
-### NEOPIXEL Status LED
-A WS2812B multicolor status LED provides a full 24 bit color spectrum and variable intensity.
+High efficiency switching regulators provide stable voltage and maximum battery life.
 
 ### More Information
-See the file in the Watt-IZ root directory "Watt-IZ Introduction.pdf.
+See the file "Watt-IZ User Manual.pdf" contained on the SD card in each Watt-IZ basic kit.
 
 ### To Purchase
 Go here: [https://www.tindie.com/products/abbycus/watt-iz-speech-enabled-embedded-hardware/]
