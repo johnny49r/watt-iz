@@ -1,22 +1,18 @@
-# Watt-iz Speech Enabled ESP32-S3 Project
+# Watt-IZ Project
 
 ## Purpose-Built Embedded Hardware for Out-of-the-Box Speech-Enabled Applications
 Watt-IZ is a programmable ESP32-S3 based platform designed specifically for speech-enabled embedded applications, 
 combining purpose-built hardware with a comprehensive, ready-to-use software stack. In addition to audio input 
 and output, touchscreen display, SD card storage, wireless connectivity, real-time clock, and power management, 
 Watt-IZ ships with a rich collection of preloaded speech and audio demos, full source code, documentation, 
-and reference designs. This allows users to explore, run, and modify real speech-interactive applications 
-immediately—without writing code—while still providing a solid foundation for custom development.
+and reference designs. This allows users to run and explore real speech-interactive applications immediately without 
+writing code while still providing a solid foundation for custom development.
+
 The Watt-IZ exists for people who want to explore voice interfaces, conversational systems, language translators, 
 chatbot’s, voice assistants, command interpreters, and many other AI-style applications using real hardware 
 without needing a full development system or complex setup just to run and experience the speech-enabled features 
 of the device. Demos and applications can operate standalone from the SD card, while users who want to build or 
 modify firmware can use a normal PC-based development workflow.
-
-Note that some demo’s require API keys from google and openAI to access cloud services such as speech-to-text, 
-text-to-speech, translate, and chat GPT access. The Watt-IZ user manual details how to acquire and install API keys. 
-
-
 
 ## Hardware Features
 The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. See PCB section for mechanical details. The
@@ -59,7 +55,7 @@ following describes the hardware capabilities of each major section.
 
 ## Software Demonstrations
 ### Overview
-Watt-IZ software support consists of a collection of demonstration programs, user documentation, and a core “Watt-IZ” application
+Watt-IZ supports a large and growing collection of demonstration programs, user documentation, and a core “Watt-IZ” application
 that serves to encapsulate many of the platform’s capabilities. Each demo program has an associated README file describing 
 the purpose and operation of the demo. All demo’s and the core Watt-IZ application can be loaded directly from the SD card 
 (see Downloading Firmware section) without requiring a host development system, download cable, etc.
@@ -79,24 +75,24 @@ require a connected speaker while others may require an API key for speech conve
   - Display file hierarchy.
   - Measure SD card write and read speeds in the hardware environment.
   - Load demo programs and apps directly from the SD card. All demo’s have code example of how to implement this feature.
-  - Use case demo’s of Non Volatile Storage using the ArduinoNVS library.
+  - Use case examples of Non Volatile Storage using the ArduinoNVS library (EEPROM functionality).
 ### Speech and Audio Functions
   - Record and playback WAV (uncompressed) files. See demo watt_iz_audio.
   - Audio processing (low pass filtering, FFT).
-  - Streaming (works with ESP-NOW to stream audio to a peer).
+  - Streaming (works with ESP-NOW to stream over WiFi).
   - Speech detection (use FFT and Formant analysis to detect valid speech vs other noises).
   - Sinewave frequency and ring tone functions.
 ### Real Time Clock & Alarm (see demo watt_iz_clock)
   - Demonstrates timekeeping functions (year, month, day, hour, minute, second).
   - Time synchronization with internet NTP server.
   - Calender with reverse and forward month scrolling.
-  - Simple alarm trigger.
+  - Alarm trigger example.
 ### AI Cloud Demo's
   - Google Speech to Text service (see demo watt_iz_STT).
   - Google Text to Speech service (see demo watt_iz_TTS).
   - Google language translate service (see demo watt_iz_translator).
   - OpenAI Chat GPT service (see demo watt_iz_chatgpt).
-### Intercom Demo
+### Intercom Demo (Direct Peer-to-Peer Communication)
   - Uses broadcast to discover other devices.
   - Uses MAC addressing for peer-to-peer communication.
   - Demonstrates writing and reading audio streams.
@@ -105,7 +101,8 @@ require a connected speaker while others may require an API key for speech conve
 
 ## Firmware Development 
 USB-Serial port via a micro-USB connector. All hardware necessary to interface with an Integrated Development 
-Environment (IDE) such as Visual Studio Code. Auto download mode is supported – no buttons to push to initiate firmware download.
+Environment (IDE) such as Visual Studio Code. 
+Auto download mode is supported – no buttons to push to initiate firmware download.
 
 ## Power 
 The board is designed to operate from a standard USB-C port. A typical 5V @ 2A AC power source (phone charger) can be used 
