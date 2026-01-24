@@ -15,8 +15,8 @@ of the device. Demos and applications can operate standalone from the SD card, w
 modify firmware can use a normal PC-based development workflow.
 
 ## Hardware Features
-The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. See PCB section for mechanical details. The
-following describes the hardware capabilities of each major section. 
+The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. The following describes the hardware capabilities of 
+each major section:
 
 ### CPU
   - Espressif ESP32-S3 SOC, 32-bit LX7 dual core @ clock speed up to 240 MHz. 
@@ -34,24 +34,26 @@ following describes the hardware capabilities of each major section.
   - Embedded I2S Mems microphone with 16 bit, 16KHz sampling rate.
   - High efficiency class D I2S audio amplifier and speaker driver. Optimized for 4 ohm 5W miniature speakers.
 ### Display and User Interface
-  - 2.8” IPS LCD with modern, high sensitivity capacitive touch screen. SPI serial interface up to 40MHz. 320X240 pixels with 16 bit color (65K colors).
+  - 2.8” IPS LCD with modern, high sensitivity capacitive touch screen. SPI serial interface up to 40MHz. 320X240 pixels with
+    16 bit color (65K colors).
   - Wake button configured to act as a wake-from-deep-sleep trigger or as a general purpose function button.
   - Intelligent programmable full spectrum LED for status and error notification. 24 bit color depth and 255 levels of brightness.
   - Utilizes the open source LVGL graphics library for event driven UI development. Driver supports DMA transfers to enhance performance.
 ### Storage and Data
   - SD-MMC (4-bit mode) SDXC/HC microSD card 32GB. 
-  - Employs the FAT32 file system with full compatibility to the LVGL library file functions.
-  - Apps and demo programs can be loaded directly from the SD card – no need to download via serial port.
+  - Employs the FAT32 file system with full compatibility with the LVGL library file functions.
+  - Apps and demo programs can be loaded directly from the SD card – no need to compile/download programs.
 ### Power Management
   - The device is externally powered from a typical 5V AC adapter (phone charger) with a USB-C connector. Additionally power can
     be supplied from the micro-USB connector used for development and debug.
   - Full support for battery operation from a single cell lithium-ion battery, 1000 – 3000 MAh capacity. Charging current 900 Ma.
   - The device can operate at full power for a minimum of 4 hours using a 2000 Mah battery. 
-  - Battery battery voltage and charging current are monitored by the CPU’s Analog-to-Digital Converter.
+  - Battery voltage and charging current are monitored by the CPU’s Analog-to-Digital Converter. State of Charge Calculation.
+  - High efficiency switching regulators provide stable voltage and maximum battery life.
 ### Real Time Clock
   - High accuracy Real Time Clock (RTC) chip with coin cell backup battery for years of continuous timekeeping. Allows
     accurate time preservation across power failure without the need for manual setting or internet time sync after power up.
-  - Real-Time Clock Counts Seconds, Minutes, Hours, Date of the Month, Month, Day of the Week, and Year, with Leap-Year Compensation.
+  - Real-Time Clock Counts Seconds, Minutes, Hours, Day of the Month, Month, Day of the Week, and Year, with Leap-Year Compensation.
 
 ## Software Demonstrations
 ### Overview
@@ -100,24 +102,11 @@ require a connected speaker while others may require an API key for speech conve
   - Break speech into intent – action – target categories (*** coming soon).
 
 ## Firmware Development 
-USB-Serial port via a micro-USB connector. All hardware necessary to interface with an Integrated Development 
-Environment (IDE) such as Visual Studio Code. 
+All hardware necessary to interface with an Integrated Development Environment (IDE) such as Visual Studio Code. 
 Auto download mode is supported – no buttons to push to initiate firmware download.
 
-## Power 
-The board is designed to operate from a standard USB-C port. A typical 5V @ 2A AC power source (phone charger) can be used 
-to power the board. Additionally the board can be powered from a single Lithium-Ion 3.7V battery to provide 
-several hours of operation at full power operation. The battery is connected to the board via a two pin header 
-located next to the USB-C connector. Note the board has reverse polarity protection in case the battery is reversed.
-A 900 mA charger circuit is provided to charge the battery when the AC adapter is powering the board. A charge status 
-LED indicates charging (or full). Power ON/OFF switch is located on the front edge of the board.
-The battery voltage and charge current are exposed to the MCU's ADC for applications requiring power monitoring, 
-battery State Of Charge, and Time To Charge calculation.
-
-High efficiency switching regulators provide stable voltage and maximum battery life.
-
 ### More Information
-See the file "Watt-IZ User Manual.pdf" contained on the SD card in each Watt-IZ basic kit.
+For additional information, read the file "Watt-IZ User Manual.pdf" contained on the SD card in each Watt-IZ basic kit.
 
 ### To Purchase
 Go here: [https://www.tindie.com/products/abbycus/watt-iz-speech-enabled-embedded-hardware/]
