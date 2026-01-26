@@ -1,6 +1,6 @@
-# Watt-IZ Project
+# Watt-IZ - A Fast Track to Speech-Enabled Embedded Applications
+### *Built on the ESP32-S3 with purpose-designed audio, UI, cloud speech integration, storage, real time clock, and power management.*
 
-## Purpose-Built Embedded Hardware for Out-of-the-Box Speech-Enabled Applications
 Watt-IZ is a programmable ESP32-S3 based platform designed specifically for speech-enabled embedded applications, 
 combining purpose-built hardware with a comprehensive, ready-to-use software stack. In addition to audio input 
 and output, touchscreen display, SD card storage, wireless connectivity, real-time clock, and power management, 
@@ -16,9 +16,9 @@ modify firmware can use a normal PC-based development workflow.
 
 Cloud speech services are required for some demo’s and app’s. These services are accesed via API keys from 
 google and/or openAI to access services such as speech-to-text, text-to-speech, translate, and chat GPT access. 
-See the section How to Acquire API Keys. 
+See below *How to Acquire API Keys*. 
 
-## Hardware Features
+## Hardware Description
 The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. The following describes the hardware capabilities of 
 each major section:
 
@@ -42,13 +42,14 @@ each major section:
     16 bit color (65K colors).
   - Wake button configured to act as a wake-from-deep-sleep trigger or as a general purpose function button.
   - Intelligent programmable full spectrum LED for status and error notification. 24 bit color depth and 255 levels of brightness.
-  - Utilizes the open source LVGL graphics library for event driven UI development. Driver supports DMA transfers to enhance performance.
+  - Utilizes the open source LVGL graphics library for event driven UI development. Driver supports DMA transfers to enhance
+    GUI performance.
 ### Storage and Data
-  - SD-MMC (4-bit mode) SDXC/HC microSD card 32GB. 
+  - SD Card socket, SD-MMC (4-bit mode), SDXC/HC microSD card 32GB. 
   - Employs the FAT32 file system with full compatibility with the LVGL library file functions.
   - Apps and demo programs can be loaded directly from the SD card – no need to compile/download programs.
 ### Power Management
-  - The device is externally powered from a typical 5V AC adapter (phone charger) with a USB-C connector. Alternately power can
+  - The device is externally powered from a typical 5V AC adapter (phone charger) with a USB-C connector. Power can also
     be supplied from the micro-USB connector used for development and debug.
   - Full support for battery operation from a single cell lithium-ion battery, 1500 – 3000 MAh capacity. Charging current 900 Ma.
   - The device can operate at full power for a minimum of 4 hours using a 2000 Mah battery. 
@@ -118,9 +119,9 @@ A google API key is needed to obtain access to STT, TTS, and Language Translator
   - In the left menu, go to APIs & Services → Library.
   - Search for the service you need (e.g., Speech-to-Text, Translate, Maps, etc.).
   - Click the API → Enable.
-  - Important: For the Watt-IZ environment, make sure you enable the following services:
-      - Speech To Text
-      - Text To Speech
+  - Important: For the Watt-IZ environment, make sure you enable the following google services:
+      - Speech-To-Text
+      - Text-To-Speech
       - Language Translator
   - Go to APIs & Services → Credentials.
   - Click Create Credentials → API Key.
@@ -129,8 +130,7 @@ A google API key is needed to obtain access to STT, TTS, and Language Translator
   - Limit which APIs it can access.
   - Add application restrictions (IP, HTTP referrer, or app type).
   - Save changes.
-  - If required by the API:
-  - Go to Billing and attach a billing account to your project.
+  - If required by the API, go to Billing and attach a billing account to your project.
   - Copy the API key to the Watt-IZ configuration file (see Watt-IZ User Manual for details).
 
 ### OpenAI (Chat GPT) API Key
