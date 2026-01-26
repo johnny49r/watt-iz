@@ -55,111 +55,113 @@
 
 // Pin assignments for PCB version 1.1
 #if defined (BOARD_VER_1_1)
-    #define PIN_NEO_PIXEL               18    // WS2812 NEOPIXEL serial pin
-    #define PIN_SD_CARD_DETECT          46    // using one of the strapping pins - no external P/U
-    // SPI bus
-    #define PIN_SPI_CLK                 38
-    #define PIN_SPI_MISO                41
-    #define PIN_SPI_MOSI                40
-    // LCD control GPIO's
-    #define PIN_LCD_CS                  47
-    #define PIN_LCD_BKLT                45
-    #define PIN_LCD_DC                  48
-    #define PIN_LCD_TCS                 39
-    #define PIN_LCD_TIRQ                42
-    // I2C bus
-    #define PIN_I2C_SCL                 8
-    #define PIN_I2C_SDA                 7
-    // SD MMC bus                    
-    #define PIN_MMC_CLK                 11
-    #define PIN_MMC_CMD                 12
-    #define PIN_MMC_D0                  10
-    #define PIN_MMC_D1                  9
-    #define PIN_MMC_D2                  14
-    #define PIN_MMC_D3                  13
-    #define PIN_SDCARD_PWR              21
-    // Microphone I2S bus
-    #define PIN_MIC_I2S_WS              4
-    #define PIN_MIC_I2S_DOUT            5
-    #define PIN_MIC_I2S_BCLK            6
-    // Speaker I2S bus
-    #define PIN_SPKR_I2S_WS             15
-    #define PIN_SPKR_I2S_DIN            16
-    #define PIN_SPKR_I2S_BCLK           17
+   #define PIN_NEO_PIXEL               18    // WS2812 NEOPIXEL serial pin
+   #define PIN_SD_CARD_DETECT          46    // using one of the strapping pins - no external P/U
+   // SPI bus
+   #define PIN_SPI_CLK                 38
+   #define PIN_SPI_MISO                41
+   #define PIN_SPI_MOSI                40
+   // LCD control GPIO's
+   #define PIN_LCD_CS                  47
+   #define PIN_LCD_BKLT                45
+   #define PIN_LCD_DC                  48
+   #define PIN_LCD_TCS                 39
+   #define PIN_LCD_TIRQ                42
+   // I2C bus
+   #define PIN_I2C_SCL                 8
+   #define PIN_I2C_SDA                 7
+   // SD MMC bus                    
+   #define PIN_MMC_CLK                 11
+   #define PIN_MMC_CMD                 12
+   #define PIN_MMC_D0                  10
+   #define PIN_MMC_D1                  9
+   #define PIN_MMC_D2                  14
+   #define PIN_MMC_D3                  13
+   #define PIN_SDCARD_PWR              21
+   // Microphone I2S bus
+   #define PIN_MIC_I2S_WS              4
+   #define PIN_MIC_I2S_DOUT            5
+   #define PIN_MIC_I2S_BCLK            6
+   // Speaker I2S bus
+   #define PIN_SPKR_I2S_WS             15
+   #define PIN_SPKR_I2S_DIN            16
+   #define PIN_SPKR_I2S_BCLK           17
 #endif
 
 // Pin assignments for PCB version 1.2
 #if defined(BOARD_VER_1_2)
-    #define PIN_NEO_PIXEL                 8
-    #define PIN_SD_CARD_DETECT            46
-    #define PIN_SPI_CLK                   38
-    #define PIN_SPI_MISO                  41
-    #define PIN_SPI_MOSI                  40
-    #define PIN_LCD_CS                    47
-    #define PIN_LCD_BKLT                  45
-    #define PIN_LCD_DC                    48
-    #define PIN_LCD_TCS                   39
-    #define PIN_LCD_TIRQ                  42
-    // I2C bus
-    #define PIN_I2C_SCL                   18
-    #define PIN_I2C_SDA                   7
-    // SD MMC bus                    
-    #define PIN_MMC_CLK                   11
-    #define PIN_MMC_CMD                   12
-    #define PIN_MMC_D0                    10
-    #define PIN_MMC_D1                    9
-    #define PIN_MMC_D2                    14
-    #define PIN_MMC_D3                    13
-    #define PIN_SDCARD_PWR                21
-    // Microphone I2S bus
-    #define PIN_MIC_I2S_WS                4
-    #define PIN_MIC_I2S_DOUT              5
-    #define PIN_MIC_I2S_BCLK              6
-    // Speaker I2S bus
-    #define PIN_SPKR_I2S_WS               15
-    #define PIN_SPKR_I2S_DIN              16
-    #define PIN_SPKR_I2S_BCLK             17    
-    // ADC pins
-    #define PIN_BATV_ADC                  1
-    #define PIN_EXTPWR_ADC                2
+   #define PIN_NEO_PIXEL                 8
+   #define PIN_SD_CARD_DETECT            46
+   #define PIN_SPI_CLK                   38
+   #define PIN_SPI_MISO                  41
+   #define PIN_SPI_MOSI                  40
+   #define PIN_LCD_CS                    47
+   #define PIN_LCD_BKLT                  45
+   #define PIN_LCD_DC                    48
+   #define PIN_LCD_TCS                   39
+   #define PIN_LCD_TIRQ                  42
+   // I2C bus
+   #define PIN_I2C_SCL                   18
+   #define PIN_I2C_SDA                   7
+   // SD MMC bus                    
+   #define PIN_MMC_CLK                   11
+   #define PIN_MMC_CMD                   12
+   #define PIN_MMC_D0                    10
+   #define PIN_MMC_D1                    9
+   #define PIN_MMC_D2                    14
+   #define PIN_MMC_D3                    13
+   #define PIN_SDCARD_PWR                21
+   // Microphone I2S bus
+   #define PIN_MIC_I2S_WS                4
+   #define PIN_MIC_I2S_DOUT              5
+   #define PIN_MIC_I2S_BCLK              6
+   // Speaker I2S bus
+   #define PIN_SPKR_I2S_WS               15
+   #define PIN_SPKR_I2S_DIN              16
+   #define PIN_SPKR_I2S_BCLK             17    
+   // ADC pins
+   #define PIN_BATV_ADC                  1
+   #define PIN_EXTPWR_ADC                2
 #endif
 
 
 // Pin assignments for PCB version 1.3
 #if defined(BOARD_VER_1_3)
-    #define PIN_NEO_PIXEL                 8
-    #define PIN_SD_CARD_DETECT            21
-    #define PIN_SPI_CLK                   38
-    #define PIN_SPI_MISO                  41
-    #define PIN_SPI_MOSI                  40
-    #define PIN_LCD_CS                    47
-    #define PIN_LCD_BKLT                  45
-    #define PIN_LCD_DC                    48
-    #define PIN_LCD_TCS                   39
-    #define PIN_LCD_TIRQ                  42
-    // I2C bus
-    #define PIN_I2C_SCL                   18
-    #define PIN_I2C_SDA                   7
-    // SD MMC bus                    
-    #define PIN_MMC_CLK                   11
-    #define PIN_MMC_CMD                   12
-    #define PIN_MMC_D0                    10
-    #define PIN_MMC_D1                    9
-    #define PIN_MMC_D2                    14
-    #define PIN_MMC_D3                    13
+   #define PIN_NEO_PIXEL                 8
+   #define PIN_SD_CARD_DETECT            21
+   #define PIN_SPI_CLK                   38
+   #define PIN_SPI_MISO                  41
+   #define PIN_SPI_MOSI                  40
+   #define PIN_LCD_CS                    47
+   #define PIN_LCD_BKLT                  45
+   #define PIN_LCD_DC                    48
+   #define PIN_LCD_TCS                   39
+   #define PIN_LCD_TIRQ                  42
+   // I2C bus
+   #define PIN_I2C_SCL                   18
+   #define PIN_I2C_SDA                   7
+   // SD MMC bus                    
+   #define PIN_MMC_CLK                   11
+   #define PIN_MMC_CMD                   12
+   #define PIN_MMC_D0                    10
+   #define PIN_MMC_D1                    9
+   #define PIN_MMC_D2                    14
+   #define PIN_MMC_D3                    13
 
-    // Microphone I2S bus
-    #define PIN_MIC_I2S_WS                4
-    #define PIN_MIC_I2S_DOUT              5
-    #define PIN_MIC_I2S_BCLK              6
+   // Microphone I2S bus
+   #define PIN_MIC_I2S_WS                4
+   #define PIN_MIC_I2S_DOUT              5
+   #define PIN_MIC_I2S_BCLK              6
 
-    // Speaker I2S bus
-    #define PIN_SPKR_I2S_WS               15
-    #define PIN_SPKR_I2S_DIN              16
-    #define PIN_SPKR_I2S_BCLK             17    
-    // ADC pins
-    #define PIN_BATV_ADC                  1
-    #define PIN_BATCHG_ADC                2
+   // Speaker I2S bus
+   #define PIN_SPKR_I2S_WS               15
+   #define PIN_SPKR_I2S_DIN              16
+   #define PIN_SPKR_I2S_BCLK             17    
+   // ADC pins
+   #define PIN_BATV_ADC                  1
+   #define PIN_BATCHG_ADC                2
+
+   #define PIN_RST_NA                    -1    
 #endif
 
 

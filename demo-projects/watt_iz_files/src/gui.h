@@ -4,15 +4,8 @@
 #pragma once
 
 #include "config.h"
-#include <TFT_eSPI.h>                     // LCD hardware drive
 #include <lvgl.h>
-#include "sdcard.h"
-
-// Touchpoint struct
-typedef struct {
-   int16_t x;
-   int16_t y;
-} touch_point_t ;
+#include "gdriver.h"
 
 #define SCROLL_SIGN (+1)
 
@@ -36,14 +29,11 @@ struct TreeNode {
    int depth = 0;
 };
 
-#define FT6336_ADDR             0x38      
-
 // LCD backlight control params
 #define BKLT_CHANNEL            0         // Ledc timer channel - used for backlight dimming
 #define BKLT_FREQ               600       // pwm period frequency in HZ
 #define BKLT_RESOLUTION         8         // timer resolution - 8 bits
 
-#define COLOR_BUFFER_SIZE  (SCREEN_WIDTH * 120)   // number of display lines in buffer
 #define TFT_GREY 0x5AEB
 
 enum {
@@ -53,9 +43,14 @@ enum {
    GUI_EVENT_CREATE_CCF,
 };
 
+// Message Box key codes
+enum {
+   MBOX_BTN_NONE=0,
+   MBOX_BTN_OK,
+   MBOX_BTN_CANCEL,
+};
 
 // Function Prototypes
-uint8_t readFT6336(touch_point_t* points, uint8_t maxPoints, uint8_t scrn_rotate);
 bool guiInit(void);
 int16_t getGUIevents(void);
 void setBacklight(uint8_t bri);
@@ -69,8 +64,8 @@ void demo_page4(lv_obj_t *parent);
 void butn_event_cb(lv_event_t * e);
 static void dd_event_handler(lv_event_t * e);
 void updateDDList(char *list_items);
-void fileListAddFile(String filename);
-void fileListAddDir(String dirname);
+void fileListAddFile(char *filestr);
+void fileListAddDir(char *dirstr);
 void set_write_needle_line_value(void * obj, int32_t v);
 void set_read_needle_line_value(void * obj, int32_t v);
 void updateWriteSpeed(float mbs);
@@ -79,18 +74,34 @@ void OK_cancel_msgbox(const char *butn_text);
 void msgbox_event_cb(lv_event_t * e);
 void disableFormatButn(void);
 void enabFormatButn(void);
+void openMessageBox(const char *title_text, const char *body_text, const char *btn1_text, 
+      uint32_t btn1_tag, const char *btn2_text, uint32_t btn2_tag, 
+      const char *btn3_text, uint32_t btn3_tag);
+void closeMessageBox(void);  
+uint16_t getMessageBoxBtn(void);    
+
+static void arc_event_cb(lv_event_t * e);
+void mbox_event_cb(lv_event_t * e);
+
+// file explorer events
+void go_home(lv_event_t *e);
+// void go_up(lv_event_t *e);
+void set_path(const char *path);
+bool is_dir_name(const char *name);
+void join_path(char *out, size_t outsz, const char *base, const char *name);
+void table_event_cb(lv_event_t *e);
+void explorer_event_cb(lv_event_t *e);
 
 // lvgl display driver ----------------------------------------------
-#define ROWS_PER_BUF       26   // LVGL draw buffer height (PSRAM)
-#define LINES_PER_CHUNK    20  // internal bounce chunk (SRAM)
-#define LV_BUFFER_SIZE (SCREEN_WIDTH * ROWS_PER_BUF)   // 26 lines of 320 horiz pixels
-static lv_display_t *main_disp;              // LVGL display object
+#define PSRAM_LINES                 SCREEN_HEIGHT //120   // PSRAM draw screen buffer (partial)
+#define SRAM_LINES                  12     // SRAM line buffer (for speed)
 
-// Internal DMA-capable (or just SRAM-capable) line buffer
-static uint16_t *dma_linebuf;
-// Uses PSRAM for draw buffers (saves a lot of SRAM), see 'guiInit()'
-static lv_color_t *buf1;      // 1st display buffer (PSRAM)
-static lv_color_t *buf2;      // 2nd display buffer (PSRAM)
+// PSRAM LVGL draw buffers (two for double-buffered partial rendering)
+static lv_display_t *main_disp;              // LVGL display object
+static uint16_t *lv_buf1_psram = nullptr;
+static uint16_t *lv_buf2_psram = nullptr;
+// DMA-capable SRAM bounce buffer (used inside flush)
+static uint16_t *sram_linebuf = nullptr;
 // ------------------------------------------------------------------
 
 // lvgl style objects
@@ -106,16 +117,22 @@ static lv_obj_t *tv_demo_page2;
 static lv_obj_t *tv_demo_page3;
 static lv_obj_t *tv_demo_page4;
 
-static lv_obj_t *ddl;
-static lv_obj_t *file_list;
+// file explorer and items
+static lv_obj_t *file_expl;
+static lv_obj_t *fe_tbl;
+static lv_obj_t *fe_hdr;
+static lv_obj_t *fe_path_lbl;
+static lv_obj_t *btn_up;
+static lv_obj_t *btn_home;
+static lv_obj_t *path_lbl;
+static char current_path[128] = "S:/";   // start here; change to your root
+
 static lv_obj_t *demo_butn1;
 static lv_obj_t *demo_label1;
 static lv_obj_t *demo_butn2;
 
-static lv_obj_t *write_meter;
-static lv_obj_t *read_meter;
-static lv_obj_t *write_needle_line;
-static lv_obj_t *read_needle_line;
+static lv_obj_t *write_arc;
+static lv_obj_t *read_arc;
 
 static lv_obj_t *start_butn;
 static lv_obj_t *write_speed_label;

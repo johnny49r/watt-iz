@@ -17,6 +17,11 @@ RgbColor yellow(colorSaturation, colorSaturation, 0);
 RgbColor orange(colorSaturation, int(float(colorSaturation * 0.7)), int(float(colorSaturation * 0.4)));
 RgbColor gray(4, 4, 4);
 
+// WiFi credentials
+char wifi_ssid[40];
+char wifi_password[40];
+
+SD_FILE_SYS sd;
 
 /********************************************************************
  * setup()
@@ -25,19 +30,22 @@ void setup(void)
 {
    char ddlist[100];                      // cString for file info dropdown list
    char strtmp[30];
-   String filelist;
-   String substr;
    int16_t nlbeg;
    int16_t nlend = 0;
+   char *item_str;
+   uint16_t btag;
 
-   Serial.begin(115200);                  // init serial monitor 
-   vTaskDelay(250);
-   Serial.println("");
    /**
     * GPIO pin assignments
     */
    pinMode(PIN_SD_CARD_DETECT, INPUT_PULLUP);   // set as input w/pullup resistor
    pinMode(PIN_LCD_TIRQ, INPUT_PULLUP);   // resistive touch IRQ pin
+   pinMode(PIN_LCD_BKLT, OUTPUT);         // LCD backlight PWM GPIO
+   digitalWrite(PIN_LCD_BKLT, LOW);       // backlight off  
+
+   Serial.begin(115200);                  // init serial monitor 
+   vTaskDelay(2000);
+   Serial.println("Booting...");
 
    /**
     * Initialize NeoPixel lib
@@ -46,32 +54,140 @@ void setup(void)
    strip.SetPixelColor(0, gray);   
    strip.Show();                          // leds off
 
+   /** ==============================================================
+    * @brief System Initialization should be done in the correct order.
+    * 1) Initialize the graphics driver and lvgl system.
+    * 2) Initialize the SD File System which registers lvgl abstract 
+    *    file system.
+    * 3) Initialize the default lvgl styles.
+    * 4) Then continue to build GUI, etc.
+    =================================================================*/
+
    /**
-    * Initialize graphics, backlight dimming, touch screen, and demo widgets
-    */                    
+    * @brief 1) Initialize graphics driver and LVGL graphics system. NOTE: This 
+    * must be done before initializing the SD file system.
+    */             
    guiInit();
 
    /**
-    * Set LVGL style objects. Must be done before creating graphics.
+    * @brief 2) Initialize the SD File System. NOTE: This is done after initializing
+    * LVGL but before building the GUI.
     */
-   setDefaultStyles();
+   bool sd_ok;
+   for(int i=0; i<3; i++) {
+      // sd_ok = init_sd_and_register_lvgl_fs();
+      sd_ok = sd.init();  //init_sd_and_register_lvgl_fs();
+      if(!sd_ok) {
+         sd.deInit();
+      } else   
+         break;
+   }
 
    /**
-    * Build tileview pages and demo graphics
+    * @brief 3) Set LVGL style objects. Must be done before creating graphics.
     */
-   demoBuilder();        
+   setDefaultStyles();                    // init lvgl widget styles
 
    /**
-    * Initialize SD Card
+    * @brief Build tileview pages and demo graphics
     */
-   sdcard.init();
+   demoBuilder();                         // prebuild graphics pages
+   setBacklight(255);                     // OK wake up the display!
 
-   switch(sdcard.sd_card_info.error_code) {
+   /**
+    * @brief Print SD Card info to the console 
+    */
+   // #define RECURSIVE_BUF_SZ   4096        // big enough for max listing chars
+   // PsBuf out;
+   // out.p = (char*) heap_caps_malloc(RECURSIVE_BUF_SZ, MALLOC_CAP_SPIRAM);
+   // out.cap = RECURSIVE_BUF_SZ;
+   // out.len = 0;
+   // out.p[0] = '\0';                       // terminate empty str
+
+   // char *from;
+   // char *to;   
+   
+   if(sd_ok) {
+      switch(sd_card_info.error_code) {
+         case SD_OK:
+            // Display card type 
+            Serial.print("\nSD Card Type: ");
+            // determine card type
+            switch(sd_card_info.card_type) {
+               case CARD_MMC:
+                  Serial.println("MMC");
+                  break;
+
+               case CARD_SD:
+                  Serial.println("SDSC");
+                  break;
+
+               case CARD_SDHC:
+                  Serial.println("SDHC");
+                  break;
+
+               default:
+                  Serial.println("UNKNOWN");
+                  break;
+            }
+            sprintf((char *)&strtmp, "Capacity: %dMB\n", sd_card_info.card_size / 1048576);
+            Serial.print(strtmp);
+            sprintf((char *)&strtmp, "Available: %dMB\n", sd_card_info.bytes_avail / 1048576);
+            Serial.print(strtmp);       
+            sprintf((char *)&strtmp, "Used: %dMB\n\n", sd_card_info.bytes_used / 1048576);         
+            Serial.print(strtmp);  
+
+            // sd.listDirectory("/", out, 0, 10); 
+            // // fs_list_dir_recursive("/", out, 0, 10);           
+            //    Serial.printf("out= %s\n", out);
+            // // parse the output string from the recursive list & fill gui file list
+            // from = out.p;
+            // while (true) {
+            //    to = strchr(from, '\n');   // find the newline in string
+            //    if(!to)
+            //       break;                  // if none, all done
+            //    to[0] = '\0';              // replace null term where NL was
+            //    if(from[0] == 'D') {       // directory?
+            //       from = strchr(from, '/');  // locate leading slash
+            //       if(from)
+            //          fileListAddDir(from);   // send dir name to gui
+            //    }
+            //    else if(from[0] == 'F') {  // file?
+            //       from = strchr(from, '/');  // locate leading slash
+            //       if(from) {     
+            //          fileListAddFile(from);  // send file name to gui
+            //       }
+            //    }
+            //    from = to +1;              // leapfrog to next line
+            // }
+            // free(out.p);                  // free PSRAM memory 
+            break;
+
+         case SD_UNINITIALIZED:
+            Serial.println("ERROR: SD is not yet initialized!");
+            break;
+
+         case MOUNT_FAILED:     
+            Serial.println("ERROR: SD Card failed to mount!");
+            break;
+
+         case NOT_INSERTED:         
+            Serial.println("ERROR: SD Card not inserted!");
+            break;
+
+         case CARD_FULL:        
+            Serial.println("ERROR: SD Card is full - no space available!");
+            break;
+      }
+
+   } 
+
+   switch(sd_card_info.error_code) {
       case SD_OK:
          // Display card type 
          Serial.print("SD Card Type: ");
          // determine card type
-         switch(sdcard.sd_card_info.card_type) {
+         switch(sd_card_info.card_type) {
             case CARD_MMC:
                Serial.println("MMC");
                strcpy((char *)&ddlist, "Card Type: MMC");
@@ -92,38 +208,15 @@ void setup(void)
                Serial.println("UNKNOWN");
                break;
          }
-         sprintf((char *)&strtmp, "\nCapacity: %d MB", sdcard.sd_card_info.card_size / 1048576);
+         sprintf((char *)&strtmp, "\nCapacity: %d MB", sd_card_info.card_size / 1048576);
          Serial.print(strtmp);
          strcat(ddlist, strtmp);
-         sprintf((char *)&strtmp, "\nAvailable: %d MB", sdcard.sd_card_info.bytes_avail / 1048576);
+         sprintf((char *)&strtmp, "\nAvailable: %d MB", sd_card_info.bytes_avail / 1048576);
          Serial.print(strtmp);
          strcat(ddlist, strtmp);         
-         sprintf((char *)&strtmp, "\nUsed: %.2f MB\n", float(sdcard.sd_card_info.bytes_used) / 1048576.0F);         
+         sprintf((char *)&strtmp, "\nUsed: %.2f MB\n", float(sd_card_info.bytes_used) / 1048576.0F);         
          Serial.print(strtmp); 
          strcat(ddlist, strtmp);           
-
-         filelist.clear();
-         sdcard.listDir("/", filelist, 5);
-               Serial.println(filelist);
-         nlbeg = 0;
-         while(true) {
-            nlend = filelist.indexOf("\n", nlbeg);  // find next newline
-            if(nlend == -1)
-               break;
-            substr = filelist.substring(nlbeg, nlend);
-                     
-            if(substr.length() < 1) break;      // exit if no more text
-
-            if(substr.startsWith("[")) {
-               substr = filelist.substring(nlbeg +1, nlend-1); // strip [] brackets around path name
-               fileListAddDir(substr);
-            }
-            else if(!substr.startsWith("<DIR>")) {     // ignore redundant <DIR> line
-               substr = filelist.substring(nlbeg, nlend); 
-               fileListAddFile(substr);
-            }
-            nlbeg = ++nlend;                
-         }
          break;
 
       case SD_UNINITIALIZED:
@@ -158,8 +251,64 @@ void setup(void)
          Serial.println("ERROR: SD Card is full - no space available!");
          break;
    }
-   updateDDList((char *)&ddlist);
 
+   /**
+    * @brief Check if there is a firmware upgrade to be loaded 
+    */
+   if(sd_ok) {
+      if(sd.fexists(FIRMWARE_UPGRADE_FILENAME)) {
+         openMessageBox(LV_SYMBOL_DOWNLOAD " Firmware Update Available", 
+               "Press 'OK' to update or 'CANCEL' to ignore.", "OK", 
+               MBOX_BTN_OK, "CANCEL", MBOX_BTN_CANCEL, "", MBOX_BTN_NONE); 
+         while(true) { 
+            btag = getMessageBoxBtn();
+            if(btag != MBOX_BTN_NONE) 
+               break;
+            lv_timer_handler();
+            vTaskDelay(10);
+         }
+
+         if(btag == MBOX_BTN_OK) {
+            openMessageBox(LV_SYMBOL_DOWNLOAD " Firmware Update Downloading ", 
+                  "Please wait until update has completed. The system will then reboot.", "", 
+                  MBOX_BTN_NONE, "", MBOX_BTN_NONE, "", MBOX_BTN_NONE);     
+            lv_timer_handler();           // draw the new message box
+            vTaskDelay(1000);              
+            if (fw_update_from_sd_wrapper(FIRMWARE_UPGRADE_FILENAME)) {
+               strncpy(strtmp, FIRMWARE_UPGRADE_FILENAME, sizeof(strtmp));
+               strcat(strtmp, ".used");   // rename the file so it doesn't try to load again
+               if(sd.fexists(strtmp))     // delete this filename?
+                  sd.fremove(strtmp);
+               if(!sd.frename(FIRMWARE_UPGRADE_FILENAME, strtmp)) { // rename failed?
+                  Serial.print(F("Failed to rename file: "));
+                  Serial.println(strtmp);
+               }
+               Serial.println(F("FW Update OK! Rebooting..."));
+               vTaskDelay(2000);
+               ESP.restart();
+            } else {
+               Serial.println(F("FW Update Failed! Continue normal boot..."));
+               closeMessageBox();
+            }
+         }
+      }
+   }   
+
+   // updateDDList((char *)&ddlist);
+
+   item_str = sd.readJsonFile(SYS_CRED_FILENAME, "wifi", "ssid");
+   if(item_str) {                      // check for error (null ptr)    
+      strncpy(wifi_ssid, item_str, sizeof(wifi_ssid));
+      Serial.printf("wifi ssid= %s\n", wifi_ssid);           
+   } else 
+      wifi_ssid[0] = 0x0;
+
+   item_str = sd.readJsonFile(SYS_CRED_FILENAME, "wifi", "password");
+   if(item_str) {                        // check for error (null ptr)
+      strncpy(wifi_password, item_str, sizeof(wifi_password));
+      Serial.printf("wifi password= %s\n", wifi_password);              
+   } else 
+      wifi_password[0] = 0x0; 
 }
 
 
@@ -171,6 +320,7 @@ void loop()
    static uint32_t lv_next_interval = 10;
    static uint32_t lv_timer_ms = millis();
    static uint32_t gp_timer = millis();
+   static uint32_t mem_timer = millis();
    static sd_speed_t *sd_speed;
    bool ret;
 
@@ -194,9 +344,11 @@ void loop()
          updateReadSpeed(0.0);
          lv_refr_now(NULL);               // force graphics refresh
          lv_timer_handler(); 
-         sd_speed = sdcard.speed_test(SD_TEST_SEQUENTIAL);
-         updateWriteSpeed(sd_speed->wr_mbs);
-         updateReadSpeed(sd_speed->rd_mbs);
+         sd_speed = sd.speedTest(SD_TEST_SEQUENTIAL);
+         if(sd_speed) {
+            updateWriteSpeed(sd_speed->wr_mbs);
+            updateReadSpeed(sd_speed->rd_mbs);
+         }
          break;
 
       case GUI_EVENT_START_FORMAT:
@@ -208,19 +360,235 @@ void loop()
             lv_timer_handler();          
             vTaskDelay(10);
          }
-         sdcard.formatSDCard();           // format SD w/FaT32
-         enabFormatButn();                // re-enable format butn to show format complete
+         sd.formatDrive();
+         // fs_formatSD();                   // format SD w/FaT32
+         enabFormatButn();                // re-enable format butn to show format complete              
          break;
 
       case GUI_EVENT_CREATE_CCF:
          // Write a new config file. Values are derived from 'credentials.h'
-         ret = sdcard.writeConfigFile(SYS_CRED_FILENAME);
+         ret = writeConfigFile("wattiz_config.json");
          if(!ret)
             Serial.println(F("Error: Failed to write config file!"));
          break;
    }
+
+   if(millis() - mem_timer > 1000) {
+      mem_timer = millis();
+      // Serial.printf("Total heap: %d\n", ESP.getHeapSize());
+      // Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
+      // Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
+      // Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());   
+      // Serial.println("");
+   }
+}
+
+
+/********************************************************************
+ * @brief Write a config file to the SD Card. ###### Requirements: 
+ * 1) credentials.h file must be present in the /src directory.
+ * 2) User must edit the credential header file to include wifi ssid,
+ *    password, and any necessary speech service API keys (google,
+ *    openAI, etc).
+ * This function creates a JSON structure and inserts the credentials
+ * where appropriate, then writes to the specified file (typically 
+ * "wattiz_config.json").
+ */
+bool writeConfigFile(const char *filename)
+{
+#if __has_include("credentials.h")  // ### Must have this file to function
+   const char *spath = sd.normalizePath(filename);
+      Serial.printf("spath = %s\n", spath);
+   String out;
+   // Build the JSON document 
+   JsonDocument doc;
+   doc.clear();
+   doc["version"] = 2;
+   doc["device"]["system_id"] = "Abbycus Watt-IZ"; // arbitrary identifier
+
+   doc["wifi"]["ssid"]           = WIFI_SSID;      // from crentials.h
+   doc["wifi"]["password"]       = WIFI_PASSWORD;
+
+   doc["google"]["api_tts_endpoint"] = GOOGLE_TTS_ENDPOINT;
+   doc["google"]["api_stt_endpoint"] = GOOGLE_STT_ENDPOINT;
+   doc["google"]["api_translate_endpoint"] = GOOGLE_TRANSLATE_ENDPOINT;   
+   doc["google"]["api_key"]      = GOOGLE_API_KEY;
+   doc["google"]["api_server"]   = GOOGLE_SERVER;
+
+   doc["openai"]["api_endpoint"] = OPENAI_ENDPOINT;
+   doc["openai"]["api_key"]      = OPENAI_API_KEY;
+   doc["openai"]["chat_version"] = OPENAI_CHAT_MODEL;
+
+   doc["updated_at"] = "Wed, Oct 8, 2025 @ 14:00";   // datetime
+   
+   size_t n = serializeJsonPretty(doc, out); // make sanitized JSON string
+      Serial.print("out= ");
+      Serial.println(out);
+   if(n <= 0)                             // serialize fail?
+      return false;
+
+   // Write the JSON file and exit
+   if(sd.writeFile(spath, (uint8_t *)out.c_str(), out.length())) {
+      Serial.println("Write config complete!");
+      return true;
+   }
+#endif   
+   return false;
+   
 }
 
 
 
+/********************************************************************
+ * @brief Function to update firmware from a *.bin file on the SD card.
+ * @note: The file should be located on path "/update/firmware.bin"
+ */
+bool fw_update_from_sd_wrapper(const char* path)
+{
+   // 1) Open firmware file
+   File file = sd.fopen(path, FILE_READ, false);
+   if (!file) {
+      Serial.printf("OTA: cannot open %s\n", path);
+      return false;
+   }
 
+   // 2) Determine file size
+   const uint32_t binSize = (uint32_t)file.size();
+   Serial.printf("OTA: file size: %u bytes\n", (unsigned)binSize);
+
+   if (binSize < 32768) {                 // min valid file size
+      Serial.println("OTA: file too small; abort");
+      file.close();
+      return false;
+   }
+
+   // 3) Select target OTA partition (inactive slot)
+   const esp_partition_t* running = esp_ota_get_running_partition();
+   const esp_partition_t* target  = esp_ota_get_next_update_partition(NULL);
+
+   if (!target) {
+      Serial.println("OTA: no OTA target partition");
+      file.close();
+      return false;
+   }
+
+   Serial.printf("OTA: running=%s @0x%08lx size=%lu\n",
+            running ? running->label : "?",
+            running ? (unsigned long)running->address : 0UL,
+            running ? (unsigned long)running->size : 0UL);
+
+   Serial.printf("OTA: target =%s @0x%08lx size=%lu\n",
+            target->label,
+            (unsigned long)target->address,
+            (unsigned long)target->size);
+
+               // debugging =========================================
+               const esp_partition_t* configured = esp_ota_get_boot_partition();
+               const esp_partition_t* boot       = esp_ota_get_boot_partition(); // (same API name; kept for clarity)
+
+               Serial.printf("OTA: configured boot=%s @0x%08lx subtype=%d\n",
+                     configured ? configured->label : "?",
+                     configured ? (unsigned long)configured->address : 0UL,
+                     configured ? configured->subtype : -1);
+
+               Serial.printf("OTA: running: label=%s addr=0x%08lx size=0x%lx subtype=%d\n",
+                     running ? running->label : "?",
+                     running ? (unsigned long)running->address : 0UL,
+                     running ? (unsigned long)running->size : 0UL,
+                     running ? running->subtype : -1);
+
+               Serial.printf("OTA: target : label=%s addr=0x%08lx size=0x%lx subtype=%d\n",
+                        target ? target->label : "?",
+                        target ? (unsigned long)target->address : 0UL,
+                        target ? (unsigned long)target->size : 0UL,
+                        target ? target->subtype : -1);
+
+               // ===================================================
+
+   if (binSize > target->size) {
+      Serial.println("OTA: bin does not fit target partition");
+      file.close();
+      return false;
+   }
+
+   if (running && target->address == running->address) {
+      Serial.println("OTA: target equals running partition (unexpected); abort");
+      file.close();
+      return false;
+   }
+
+   // 4) Begin OTA session
+   esp_ota_handle_t h = 0;
+   esp_err_t err = esp_ota_begin(target, binSize, &h);
+   if (err != ESP_OK) {
+      Serial.printf("OTA: esp_ota_begin failed: %s\n", esp_err_to_name(err));
+      file.close();
+      return false;
+   }
+
+   // 5) Stream SD file -> esp_ota_write
+   constexpr uint32_t BUF_SZ = 8192;
+   uint8_t* buf = (uint8_t*)heap_caps_malloc(BUF_SZ, MALLOC_CAP_8BIT);
+   if (!buf) {
+      Serial.println("OTA: malloc failed");
+      esp_ota_end(h);
+      file.close();
+      return false;
+   }
+
+   uint32_t offset = 0;
+   uint32_t lastPct = 0;
+
+   while (offset < binSize) {
+      uint32_t toRead = binSize - offset;
+      if (toRead > BUF_SZ) toRead = BUF_SZ;
+
+      uint32_t bytesRead = sd.fread(file, buf, toRead, offset);
+      if (bytesRead == 0) {
+         Serial.printf("OTA: fread returned 0 at offset=%u\n", (unsigned)offset);
+         heap_caps_free(buf);
+         esp_ota_end(h);
+         file.close();
+         return false;
+      }
+
+      err = esp_ota_write(h, buf, bytesRead);
+      if (err != ESP_OK) {
+         Serial.printf("OTA: esp_ota_write failed at offset=%u: %s\n",
+                     (unsigned)offset, esp_err_to_name(err));
+         heap_caps_free(buf);
+         esp_ota_end(h);
+         file.close();
+         return false;
+      }
+
+      offset += bytesRead;
+
+      // progress every 5%
+      uint32_t pct = (uint32_t)((offset * 100ULL) / binSize);
+      if (pct != lastPct && (pct % 5 == 0)) {
+         Serial.printf("OTA: %u%%\n", (unsigned)pct);
+         lastPct = pct;
+      }
+   }
+
+   heap_caps_free(buf);
+   file.close();
+
+   // 6) Finalize OTA
+   err = esp_ota_end(h);
+   if (err != ESP_OK) {
+      Serial.printf("OTA: esp_ota_end failed: %s\n", esp_err_to_name(err));
+      return false;
+   }
+
+   // 7) Switch boot partition
+   err = esp_ota_set_boot_partition(target);
+   if (err != ESP_OK) {
+      Serial.printf("OTA: set boot partition failed: %s\n", esp_err_to_name(err));
+      return false;
+   }
+
+   Serial.println("OTA: update written and boot partition set");
+   return true;
+}
