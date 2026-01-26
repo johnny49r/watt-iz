@@ -14,6 +14,10 @@ without needing a full development system or complex setup just to run and exper
 of the device. Demos and applications can operate standalone from the SD card, while users who want to build or 
 modify firmware can use a normal PC-based development workflow.
 
+Cloud speech services are required for some demo’s and app’s. These services are accesed via API keys from 
+google and/or openAI to access services such as speech-to-text, text-to-speech, translate, and chat GPT access. 
+See the section How to Acquire API Keys. 
+
 ## Hardware Features
 The Watt-IZ project hardware is packaged on a 100mm x 60mm PCB. The following describes the hardware capabilities of 
 each major section:
@@ -104,6 +108,44 @@ require a connected speaker while others may require an API key for speech conve
 ## Firmware Development 
 All hardware necessary to interface with an Integrated Development Environment (IDE) such as Visual Studio Code. 
 Auto download mode is supported – no buttons to push to initiate firmware download.
+
+## How to Acquire API Keys
+### Google API Key
+A google API key is needed to obtain access to STT, TTS, and Language Translator services. 
+  - Go to https://console.cloud.google.com and sign in (or create a new) Google account.
+  - Click the project selector (top bar) → New Project → give it a name → Create.
+  - Make sure your new project is selected.
+  - In the left menu, go to APIs & Services → Library.
+  - Search for the service you need (e.g., Speech-to-Text, Translate, Maps, etc.).
+  - Click the API → Enable.
+  - Important: For the Watt-IZ environment, make sure you enable the following services:
+      - Speech To Text
+      - Text To Speech
+      - Language Translator
+  - Go to APIs & Services → Credentials.
+  - Click Create Credentials → API Key.
+  - Your API key is generated—copy and save it securely.
+  - (Recommended) Click Restrict Key:
+  - Limit which APIs it can access.
+  - Add application restrictions (IP, HTTP referrer, or app type).
+  - Save changes.
+  - If required by the API:
+  - Go to Billing and attach a billing account to your project.
+  - Copy the API key to the Watt-IZ configuration file (see Watt-IZ User Manual for details).
+
+### OpenAI (Chat GPT) API Key
+An openAI API key is required to access Chat GPT services. Use the following steps to acquire a new key:
+  - Go to https://platform.openai.com and sign in (or create an account).
+  - Click your profile icon (top-right) → View API keys
+(or go directly to the API Keys page from the dashboard).
+  - Click Create new secret key.
+  - Give the key a name (optional but recommended).
+  - Copy the key immediately and store it securely - You will not be able to view it again!
+  - (Recommended) Set usage controls:
+  - Go to Settings → Billing to add a payment method if required.
+  - Review Usage Limits to avoid unexpected charges.
+  - Use the key in your application:
+  - Copy the API key string to the Watt-IZ configuration file on the SD card (see Watt-IZ User Manual for details). 
 
 ### More Information
 For additional information, read the file "Watt-IZ User Manual.pdf" contained on the SD card in each Watt-IZ basic kit.
