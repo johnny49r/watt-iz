@@ -48,9 +48,9 @@ each major section:
   - Employs the FAT32 file system with full compatibility with the LVGL library file functions.
   - Apps and demo programs can be loaded directly from the SD card – no need to compile/download programs.
 ### Power Management
-  - The device is externally powered from a typical 5V AC adapter (phone charger) with a USB-C connector. Additionally power can
+  - The device is externally powered from a typical 5V AC adapter (phone charger) with a USB-C connector. Alternately power can
     be supplied from the micro-USB connector used for development and debug.
-  - Full support for battery operation from a single cell lithium-ion battery, 1000 – 3000 MAh capacity. Charging current 900 Ma.
+  - Full support for battery operation from a single cell lithium-ion battery, 1500 – 3000 MAh capacity. Charging current 900 Ma.
   - The device can operate at full power for a minimum of 4 hours using a 2000 Mah battery. 
   - Battery voltage and charging current are monitored by the CPU’s Analog-to-Digital Converter. State of Charge Calculation.
   - High efficiency switching regulators provide stable voltage and maximum battery life.
