@@ -40,8 +40,8 @@
 //###################################################################
 // ENABLE SPEECH SERVICES
 //###################################################################
-See file speechServices.h, section ENABLE SPEECH SERVICES to enable
-required cloud services.
+// See file speechServices.h, section ENABLE SPEECH SERVICES to enable
+// any required cloud services.
 
 //###################################################################
 // GPIO ASSIGNMENTS 
