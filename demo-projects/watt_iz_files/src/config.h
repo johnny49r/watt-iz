@@ -37,14 +37,11 @@
 //###################################################################
 #define SOFTWARE_VERSION            "Watt-IZ Ver 0.2 Abbycus 2025"
 
-
 //###################################################################
 // ENABLE SPEECH SERVICES
 //###################################################################
-// #define USE_CHAT_GPT_SERVICE        1
-// #define USE_SPEECH_TO_TEXT_SERVICE  1
-// #define USE_TEXT_TO_SPEECH_SERVICE  1
-
+See file speechServices.h, section ENABLE SPEECH SERVICES to enable
+required cloud services.
 
 //###################################################################
 // GPIO ASSIGNMENTS 
