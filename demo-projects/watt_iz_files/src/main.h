@@ -9,7 +9,6 @@
 #include "config.h"
 #include "gui.h"
 #include "sd_lvgl_fs.h"
-#include "credentials.h"
 
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
@@ -23,6 +22,9 @@
 // Function prototypes
 bool fw_update_from_sd_wrapper(const char* path);
 bool writeConfigFile(const char *filename);
+bool nextLine(const String &src, int16_t &pos, String &line);
+bool searchKeys(String &src, String key, String &value);
+bool parseKeyQuotedValue(const String &line, String &keyOut, String &valOut);
 
 enum {
     SD_TEST_SEQUENTIAL=0,

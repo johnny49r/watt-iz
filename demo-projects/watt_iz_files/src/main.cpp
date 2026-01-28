@@ -44,7 +44,7 @@ void setup(void)
    digitalWrite(PIN_LCD_BKLT, LOW);       // backlight off  
 
    Serial.begin(115200);                  // init serial monitor 
-   vTaskDelay(2000);
+   vTaskDelay(1000);
    Serial.println("Booting...");
 
    /**
@@ -396,47 +396,175 @@ void loop()
  */
 bool writeConfigFile(const char *filename)
 {
-#if __has_include("credentials.h")  // ### Must have this file to function
-   const char *spath = sd.normalizePath(filename);
-      Serial.printf("spath = %s\n", spath);
-   String out;
-   // Build the JSON document 
-   JsonDocument doc;
-   doc.clear();
-   doc["version"] = 2;
-   doc["device"]["system_id"] = "Abbycus Watt-IZ"; // arbitrary identifier
+   int16_t pos = 0;
+   if(sd.fexists("/credentials.txt")) {
+      String CREDS;
+      String SUB_STR;
+      File _file = sd.fopen("/credentials.txt", FILE_READ, false);
+      if(!_file)
+         return false;
 
-   doc["wifi"]["ssid"]           = WIFI_SSID;      // from crentials.h
-   doc["wifi"]["password"]       = WIFI_PASSWORD;
+      // Read creadential file into String object CREDS
+      while (_file.available()) {
+         CREDS += (char)_file.read();
+      }
+      sd.fclose(_file);                   // close file
 
-   doc["google"]["api_tts_endpoint"] = GOOGLE_TTS_ENDPOINT;
-   doc["google"]["api_stt_endpoint"] = GOOGLE_STT_ENDPOINT;
-   doc["google"]["api_translate_endpoint"] = GOOGLE_TRANSLATE_ENDPOINT;   
-   doc["google"]["api_key"]      = GOOGLE_API_KEY;
-   doc["google"]["api_server"]   = GOOGLE_SERVER;
+      // Normalize any path irregularities
+      const char *spath = sd.normalizePath(filename);
+      String out;
+      String Value;
 
-   doc["openai"]["api_endpoint"] = OPENAI_ENDPOINT;
-   doc["openai"]["api_key"]      = OPENAI_API_KEY;
-   doc["openai"]["chat_version"] = OPENAI_CHAT_MODEL;
+      // Build the JSON document 
+      JsonDocument doc;
+      doc.clear();
+      doc["version"] = 2;
+      doc["device"]["system_id"] = "Abbycus Watt-IZ V1.3"; // arbitrary identifier
 
-   doc["updated_at"] = "Wed, Oct 8, 2025 @ 14:00";   // datetime
-   
-   size_t n = serializeJsonPretty(doc, out); // make sanitized JSON string
-      Serial.print("out= ");
-      Serial.println(out);
-   if(n <= 0)                             // serialize fail?
+      // Extract WiFi SSID name
+      if(searchKeys(CREDS, "WIFI_SSID", Value)) {
+         doc["wifi"]["ssid"] = Value;      
+      } 
+      // Extract WiFi Password
+      if(searchKeys(CREDS, "WIFI_PASSWORD", Value)) {
+         doc["wifi"]["password"] = Value;      
+      }
+      // Extract Google TTS Endpoint String
+      if(searchKeys(CREDS, "GOOGLE_TTS_ENDPOINT", Value)) {
+         doc["google"]["api_tts_endpoint"] = Value; 
+      }
+      // Extract Google TTS Endpoint String
+      if(searchKeys(CREDS, "GOOGLE_STT_ENDPOINT", Value)) {
+         doc["google"]["api_stt_endpoint"] = Value; 
+      }
+      // Extract Google Translate Endpoint String
+      if(searchKeys(CREDS, "GOOGLE_TRANSLATE_ENDPOINT", Value)) {
+         doc["google"]["api_translate_endpoint"] = Value; 
+      }
+      // Extract Google API Key String
+      if(searchKeys(CREDS, "GOOGLE_API_KEY", Value)) {
+         doc["google"]["api_key"]  = Value; 
+      }   
+      // Extract Google Server String
+      if(searchKeys(CREDS, "GOOGLE_SERVER", Value)) {
+         doc["google"]["api_server"] = Value; 
+      }  
+      // Extract openAI Endpoint String
+      if(searchKeys(CREDS, "OPENAI_ENDPOINT", Value)) {
+         doc["openai"]["api_endpoint"]  = Value; 
+      }  
+      // Extract openAI API Key String
+      if(searchKeys(CREDS, "OPENAI_API_KEY", Value)) {
+         doc["openai"]["api_key"] = Value; 
+      }    
+      // Extract openAI Chat Version String
+      if(searchKeys(CREDS, "OPENAI_CHAT_MODEL", Value)) {
+         doc["openai"]["chat_version"] = Value; 
+      }    
+      // Timestamp      
+      doc["updated_at"] = "Wed, Jan 28, 2026 @ 15:57";   // datetime
+      
+      size_t n = serializeJsonPretty(doc, out); // make sanitized JSON string
+         // Serial.print("out= ");
+         // Serial.println(out);
+      if(n <= 0)                             // serialize fail?
+         return false;
+
+      // Write the JSON file and exit
+      if(sd.writeFile(spath, (uint8_t *)out.c_str(), out.length())) {
+         Serial.println("Write config complete!");
+         return true;
+      }
       return false;
-
-   // Write the JSON file and exit
-   if(sd.writeFile(spath, (uint8_t *)out.c_str(), out.length())) {
-      Serial.println("Write config complete!");
-      return true;
    }
-#endif   
-   return false;
-   
+   else 
+      return false;
 }
 
+
+/********************************************************************
+ * @brief Search for string 'key' in the source file. If key is a match,
+ *  return value string.
+ * @return true if the key is found.
+ */
+bool searchKeys(String &src, String key, String &value)
+{
+   String aLine;
+   int16_t pos = 0;
+
+   while(nextLine(src, pos, aLine)) {
+      if(aLine.startsWith(key)) {
+         parseKeyQuotedValue(aLine, key, value); 
+         break;
+      }
+   }
+   return true;
+}
+
+
+/********************************************************************
+ * @brief Return the value string of the key/value pair
+ */
+bool parseKeyQuotedValue(const String &line, String &keyOut, String &valOut)
+{
+   keyOut = "";
+   valOut = "";
+
+   if (!line.length()) return false;
+
+   // Skip comments (optional)
+   if (line.startsWith("#") || line.startsWith("//")) return false;
+
+   // Find first quote
+   int q1 = line.indexOf('"');
+   if (q1 < 0) return false;
+
+   // Key is everything before first quote; take first token
+   String left = line.substring(0, q1);
+   left.trim();
+   if (!left.length()) return false;
+
+   int sp = left.indexOf(' ');
+   int tab = left.indexOf('\t');
+   int sep = -1;
+
+   if (sp >= 0 && tab >= 0) sep = min(sp, tab);
+   else if (sp >= 0)        sep = sp;
+   else if (tab >= 0)       sep = tab;
+
+   keyOut = (sep >= 0) ? left.substring(0, sep) : left;
+   keyOut.trim();
+   if (!keyOut.length()) return false;
+
+   // Extract quoted value
+   int q2 = line.indexOf('"', q1 + 1);
+   if (q2 < 0) return false;
+
+   valOut = line.substring(q1 +1, q2);
+   return true;
+}
+
+
+/********************************************************************
+ * @brief Return text lines in the source text file    
+ */
+bool nextLine(const String &src, int16_t &pos, String &line)
+{
+    if (pos >= src.length()) return false;
+
+    int end = src.indexOf('\n', pos);
+    if (end < 0) {
+        line = src.substring(pos);
+        pos = src.length();
+    } else {
+        line = src.substring(pos, end);
+        pos = end + 1;
+    }
+
+    line.replace("\r", "");   // handle Windows CRLF
+    line.trim();              // trim leading/trailing whitespace
+    return true;
+}
 
 
 /********************************************************************
