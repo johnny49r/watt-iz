@@ -78,7 +78,7 @@ require a connected speaker while others may require an API key for speech conve
   - PWM backlight LED control.
 ### Storage and File System (see demo watt_iz_files).
   - Format an SD card with FAT32.
-  - Utility to create a system credential JSON file using a text file with your WiFi info and API keys.
+  - Utility to create a system configuration JSON file using a text file with your WiFi info and API keys.
   - Display file hierarchy.
   - Measure SD card write and read speeds in the hardware environment.
   - Load demo programs and apps directly from the SD card. All demo’s have code example of how to implement this feature.
