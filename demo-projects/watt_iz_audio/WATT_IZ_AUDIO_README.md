@@ -4,7 +4,7 @@ the Watt-IZ Speech Enabled Development Board.
 
 ## Hardware Requirements
 - Functional 2.8" LCD with either capacitive or resistive touch screen. 
-- Small 4 ohn speaker connected to the SPKR pins. 
+- Small 4 ohm speaker connected to the SPKR pins. 
 
 ## Microphone Specifications
 The microphone used in the Watt-IZ hardware is a TDK ICS-43434 MEMS device with
@@ -16,8 +16,8 @@ using a I2S digital serial interface. Best performance is had using a 4-Ohm
 miniature speaker. Datasheet can be seen [here:] https://www.analog.com/media/en/technical-documentation/data-sheets/max98357a-max98357b.pdf .
 
 ## Tone Demo Page
-The tone demo page can generate a sinewave tone from 0 to 3000 Hz. There is also a 
-volume control from 0 - 100% of "maximum".
+The tone demo page can generate a sinewave tone from 1000 to 3000 Hz. Volume control slider controls  
+volume from 0 - 100% of "maximum".
 Click 'Tone ON' button to hear the selected tone and volume.
 
 ## FFT Chart Page
