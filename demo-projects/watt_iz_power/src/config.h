@@ -160,6 +160,8 @@
     // ADC pins
     #define PIN_BATV_ADC                  1
     #define PIN_BATCHG_ADC                2
+
+    #define PIN_RST_NA                    -1
 #endif
 
 

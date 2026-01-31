@@ -94,7 +94,7 @@ float SYS_UTILS::getBatteryVolts(uint32_t avg)
       // read adc using espressif adc calib "under the hood"
       v += float(analogReadMilliVolts(PIN_BATV_ADC)); 
    }
-   // calc using resistor divider (2:1) and mv->volts (1000) = 500.0
+   // calc using resistor divider (2:1) 
    return (v / (avg * 500.0f));    // convert mv to float volts
 }
 
@@ -192,4 +192,15 @@ void SYS_UTILS::hexDump(uint8_t *byte_ptr, uint32_t num_bytes)
       }
    }
    Serial.println("");
+}
+
+
+/********************************************************************
+ * @brief Return temperature from clock chip in degrees C
+ */
+float SYS_UTILS::RTCGetTempC(void)
+{
+   RtcTemperature tc;
+   tc = Rtc.GetTemperature();
+   return tc.AsFloatDegC();
 }

@@ -10,14 +10,8 @@ static lv_coord_t * disp_bufr;
 lv_coord_t * fft_bufr;
 #define DISPLAY_POINTS           512
 
-// Graphics hardware library
-TFT_eSPI tft = TFT_eSPI();
-#if defined(USE_RESISTIVE_TOUCH_SCREEN)
-   uint16_t calData[5] = { 360, 3400, 360, 3400, 7 }; // Example — use your own from calibration
-#endif
-
 bool NVS_OK = false;                   // global OK flag for non-volatile storage lib
-
+uint16_t msgBoxBtnTag = MBOX_BTN_NONE;
 
 /********************************************************************
  * Display flush callback for LVGL graphics engine v9.3.x
@@ -30,85 +24,44 @@ void display_flush_cb(lv_display_t *disp_drv, const lv_area_t *area, uint8_t *px
    const int32_t h  = area->y2 - area->y1 + 1;
 
    // px_map points to RGB565 pixels (because we set the display color format to RGB565)
-   const uint16_t *src = (const uint16_t*)px_map;
+   // const uint16_t *src = (const uint16_t*)px_map;
+   const uint16_t *src = reinterpret_cast<const uint16_t *>(px_map);   
 
-   tft.startWrite();
-   for (int32_t row = 0; row < h; ) {
-      int32_t lines = LINES_PER_CHUNK;
-      if (row + lines > h) lines = h - row;
+   // Copy in small DMA-friendly strips from PSRAM → SRAM, then push
+   int y = 0;
+   while (y < h) {
+      const int lines = min(SRAM_LINES, h - y);
+      const size_t pixels = (size_t)w * lines;
 
-      // Copy from LVGL buffer (PSRAM) to small internal RAM buffer
-      memcpy(dma_linebuf, &src[row * w], w * lines * sizeof(uint16_t));
+      // Copy PSRAM -> SRAM (DMA-capable)
+      memcpy(sram_linebuf, src + (size_t)y * w, pixels * sizeof(uint16_t));
 
-      // Push this window
-      tft.setAddrWindow(x1, y1 + row, w, lines);
-      // NOTE: Do NOT use DMA API on S3; just regular pushPixels works everywhere.
-      tft.pushPixels(dma_linebuf, w * lines);
+      // LovyanGFX: push strip (DMA inside)
+      gfx.pushImage(x1, y1 + y, w, lines, sram_linebuf);
 
-      row += lines;
+      y += lines;
    }
-   tft.endWrite();   
-
    lv_disp_flush_ready(disp_drv);
 }
 
 
-
 /********************************************************************
- * Callback to read touch screen 
+ * Callback to read touch screen coords
  */
 bool touch_read_cb(lv_indev_t * indev, lv_indev_data_t * data) 
 {
-#if defined(USE_CAPACITIVE_TOUCH_SCREEN)   
-   touch_point_t points[2];               // room for two touch points
-   // Capacitive touch I2C function 
-   uint8_t touches = readFT6336(points, 2, tft.getRotation());
+   touch_point_t points[2];
 
+   uint8_t touches = readTouchScreen((touch_point_t *)&points, SCREEN_ROTATION);
    if(touches > 0) {
+         // Serial.printf("Touch: (%d, %d)\n", touchX, touchY);
       data->point.x = points[0].x;
       data->point.y = points[0].y;
       data->state = LV_INDEV_STATE_PRESSED;
    } else {
       data->state = LV_INDEV_STATE_RELEASED;
-   }
-   return (touches > 0); // true if screen touched
-
-#elif defined(USE_RESISTIVE_TOUCH_SCREEN)   
-   uint16_t touchX, touchY;
-
-   bool touched = tft.getTouch(&touchX, &touchY);
-
-   if(!touched) {
-      data->state = LV_INDEV_STATE_REL; // Released
-   } else {
-      data->state = LV_INDEV_STATE_PR;  // Pressed
-
-      switch(tft.getRotation()) {
-         case 0:                          // portrait 
-            data->point.x = map(touchY, 0, SCREEN_HEIGHT, 0, SCREEN_WIDTH);
-            data->point.y = map(touchX, 0, SCREEN_WIDTH, 0, SCREEN_HEIGHT);
-            break;
-
-         case 1:                          // landscape
-            data->point.x = touchX;
-            data->point.y = SCREEN_HEIGHT - touchY;
-            break;
-
-         case 2:
-            data->point.x = map(touchY, 0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
-            data->point.y = map(touchX, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
-            break;
-
-         case 3:
-            data->point.x = SCREEN_WIDTH- touchX;
-            data->point.y = touchY;
-            break;
-      }
-
-      Serial.printf("tx=%d, ty=%d, x=%d, y=%d, rot=%d\n", touchX, touchY, data->point.x, data->point.y, tft.getRotation());
-   }
-   return touched;
-#endif
+   }   
+   return (touches > 0);                        // touched if true
 }
 
 
@@ -127,8 +80,6 @@ static void lv_tick_task(void *arg) {
 */
 bool guiInit(void)
 {
-   // Default resistive screen coords - run touch_calibrate() to improve accuracy
-   uint16_t touch_calib_data[] = {360, 3600, 300, 3800, SCREEN_ROTATION}; 
 
    // Initialize LCD GPIO's
    pinMode(PIN_LCD_BKLT, OUTPUT);         // LCD backlight PWM GPIO
@@ -154,24 +105,12 @@ bool guiInit(void)
       return false;      
    }
 
-   // Init lvgl & tft libraries
-   tft.init(0);                           // low level tft_espi hardware library
-   tft.setRotation(SCREEN_ROTATION);      // use landscape orientation (1 or 3)
-
-#if defined(USE_RESISTIVE_TOUCH_SCREEN)  
-   if(NVS_OK) {     
-      NVS.getBlob("nvs_tcal", (uint8_t *)&touch_calib_data, sizeof(touch_calib_data));
-
-         for(int i=0; i<5; i++) {
-            Serial.printf("%d, ", (uint16_t *)touch_calib_data[i]);
-         }
-         Serial.println("");
-   }
-   // tft.setTouch(&touch_calib_data[0]);
-#endif
-   tft.fillScreen(TFT_BLACK); 
-   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-   tft.setSwapBytes(true);                // swap bytes for lvgl
+   // Init display driver
+   gfx.init();
+   gfx.setRotation(3);
+   gfx.setColorDepth(16);
+   gfx.fillScreen(TFT_BLACK);
+   gfx.setSwapBytes(false); // ILI9341 usually expects RGB565 as-is; enable if colors look swapped
 
    // Init LVGL graphics library
    lv_init();
@@ -187,23 +126,31 @@ bool guiInit(void)
    esp_timer_create(&lvgl_tick_args, &lvgl_tick_timer);
    esp_timer_start_periodic(lvgl_tick_timer, 1000); // 1000 µs = 1 ms
 
-   // Create display buffer
+   // Create display buffers
    main_disp = lv_display_create(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-   // Allocate LVGL draw buffers in PSRAM (saves SRAM)
-   size_t pix_per_buf = (size_t)SCREEN_WIDTH * ROWS_PER_BUF;
-   size_t bytes_per_buf = pix_per_buf * sizeof(lv_color_t);
+   lv_display_set_color_format(main_disp, LV_COLOR_FORMAT_RGB565_SWAPPED); //LV_COLOR_FORMAT_RGB565);
+   lv_display_set_flush_cb(main_disp, display_flush_cb);  
 
-   buf1 = (lv_color_t*) heap_caps_malloc(bytes_per_buf, MALLOC_CAP_SPIRAM); // | MALLOC_CAP_8BIT);
-   buf2 = (lv_color_t*) heap_caps_malloc(bytes_per_buf, MALLOC_CAP_SPIRAM); // | MALLOC_CAP_8BIT);
+   // --- Allocate PSRAM draw buffers for LVGL partial mode ---
+   // Total pixels per buffer = width * PSRAM_LINES
+   size_t buf_pixels = (size_t)SCREEN_WIDTH * PSRAM_LINES;
+   size_t buf_bytes  = buf_pixels * sizeof(uint16_t);
 
-   // Create small internal bounce buffer in internal SRAM for speed
-   dma_linebuf = (uint16_t*) heap_caps_malloc(SCREEN_WIDTH * LINES_PER_CHUNK * sizeof(uint16_t),
-                        MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);   
+   lv_buf1_psram = (uint16_t *)heap_caps_malloc(buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+   lv_buf2_psram = (uint16_t *)heap_caps_malloc(buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 
-   // Set display buffers and the flush callback
-   lv_display_set_buffers(main_disp, buf1, buf2, bytes_per_buf, LV_DISPLAY_RENDER_MODE_PARTIAL);  
-   lv_display_set_flush_cb(main_disp, display_flush_cb);
+   // Supply buffers to LVGL (double-buffered, partial rendering)
+   lv_display_set_buffers(main_disp,
+         lv_buf1_psram, lv_buf2_psram,
+         buf_bytes,
+         LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+   // Allocate a small DMA-capable SRAM bounce buffer for speed.
+   size_t sram_pixels = SCREEN_WIDTH * SRAM_LINES;
+   size_t sram_bytes  = sram_pixels * sizeof(uint16_t);
+   sram_linebuf = (uint16_t *)heap_caps_malloc(sram_bytes,
+         MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);         
 
    // Get the active screen object for this display
    lv_obj_t *scr = lv_display_get_screen_active(main_disp);
@@ -305,130 +252,177 @@ void demo_page1(lv_obj_t *parent)
 void demo_page2(lv_obj_t *parent)
 {
 #define N_SAMPLES    60   
-   char buf[40];
-   scrn2 = lv_obj_create(parent);          // create a container for the widgets
-   lv_obj_set_style_bg_color(scrn2, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);
-   lv_obj_set_style_border_width(scrn2, 0, LV_PART_MAIN);
-   lv_obj_set_style_pad_all(scrn2, 0, LV_PART_MAIN);
-   lv_obj_set_size(scrn2, SCREEN_WIDTH, SCREEN_HEIGHT);
-   lv_obj_center(scrn2);  
-   
+   char buf[40]; 
+   int16_t i = 0;
+
+   // Y axis scale major tick custom text 
+   static const char * yvbat_scale_text[] = {"0.0", "1.0", "2.0", "3.0", "4.0", "5.0", "6.0", NULL};
+   static const char * yichg_scale_text[] = {"0", "200", "400", "600", "800", "1000", "1200", NULL};
+
    // Create a chart to display audio/FFT from the microphone
-   pwr_chart = lv_chart_create(scrn2);      
-   lv_obj_set_size(pwr_chart, 320, 120); //316, 120);    
+   pwr_chart = lv_chart_create(parent);      
+   lv_obj_set_size(pwr_chart, 320, 160); //316, 120);    
    lv_chart_set_point_count(pwr_chart, N_SAMPLES);
    lv_chart_set_range(pwr_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 6000);
-   lv_chart_set_range(pwr_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 6000);   
+   lv_chart_set_range(pwr_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 1200);   
    lv_obj_set_style_radius(pwr_chart, 3, LV_PART_MAIN);
-   lv_obj_align(pwr_chart, LV_ALIGN_TOP_MID, 0, 10);
+   lv_obj_set_style_bg_color(pwr_chart, lv_color_black(), LV_PART_MAIN);
+   lv_obj_set_style_line_color(pwr_chart, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);
+   lv_obj_set_style_border_color(pwr_chart, lv_palette_darken(LV_PALETTE_GREY, 1), LV_PART_MAIN);   
+   lv_chart_set_div_line_count(pwr_chart, 7, 11);
    lv_chart_set_type(pwr_chart, LV_CHART_TYPE_LINE);   // Show lines and points too
    lv_obj_set_scrollbar_mode(pwr_chart, LV_SCROLLBAR_MODE_OFF);     // don't show scrollbars on non-scrolling pages
    lv_obj_clear_flag(pwr_chart, LV_OBJ_FLAG_SCROLLABLE);
    lv_obj_set_style_size(pwr_chart, 0, 0, LV_PART_INDICATOR);
+   lv_obj_align(pwr_chart, LV_ALIGN_TOP_MID, 0, 5);   
 
-   ser1 = lv_chart_add_series(pwr_chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_PRIMARY_Y);  
-   ser2 = lv_chart_add_series(pwr_chart, lv_palette_main(LV_PALETTE_LIGHT_BLUE), LV_CHART_AXIS_SECONDARY_Y);   
+   ser1 = lv_chart_add_series(pwr_chart, lv_palette_main(LV_PALETTE_LIGHT_BLUE), LV_CHART_AXIS_PRIMARY_Y);  
+   ser2 = lv_chart_add_series(pwr_chart, lv_palette_main(LV_PALETTE_RED), LV_CHART_AXIS_SECONDARY_Y);   
 
    // X axis as a scale aligned to the bottom 
-   lv_obj_t *x_scale = lv_scale_create(pwr_chart);
-   lv_scale_set_mode(x_scale, LV_SCALE_MODE_HORIZONTAL_TOP);
-   lv_obj_set_size(x_scale, 318, 24);
-   lv_scale_set_range(x_scale, 0, 60); 
-   lv_scale_set_total_tick_count(x_scale, 7);            // match point count
-   lv_scale_set_major_tick_every(x_scale, 10);            // every tick is major
-   lv_scale_set_label_show(x_scale, true);
-   lv_obj_set_style_pad_hor(x_scale, lv_chart_get_first_point_center_offset(pwr_chart), 0);
-   // lv_obj_align_to(x_scale, pwr_chart, LV_ALIGN_BOTTOM_MID, 0, 0);   
-   lv_obj_align(x_scale, LV_ALIGN_BOTTOM_MID, 0, 0);      
+   lv_obj_t *xtime_scale = lv_scale_create(pwr_chart);
+   lv_scale_set_mode(xtime_scale, LV_SCALE_MODE_HORIZONTAL_TOP);
+   lv_obj_set_size(xtime_scale, 318, 22);
+   lv_scale_set_range(xtime_scale, 0, 60); 
+   lv_scale_set_total_tick_count(xtime_scale, 11);            // match point count
+   lv_scale_set_major_tick_every(xtime_scale, 1);            // every tick is major
+   lv_scale_set_label_show(xtime_scale, false);
+   lv_obj_set_style_pad_hor(xtime_scale, lv_chart_get_first_point_center_offset(pwr_chart), 0); 
+   lv_obj_set_style_line_color(xtime_scale, lv_palette_lighten(LV_PALETTE_GREY, 2), LV_PART_MAIN);   
+   lv_obj_set_style_line_color(xtime_scale, lv_palette_lighten(LV_PALETTE_GREY, 2), LV_PART_INDICATOR);     
+   lv_obj_set_style_line_color(xtime_scale, lv_palette_lighten(LV_PALETTE_GREY, 2), LV_PART_ITEMS);    
+   lv_obj_align(xtime_scale, LV_ALIGN_BOTTOM_MID, 0, 10);      
 
-   lv_obj_t *lab3 = lv_label_create(pwr_chart);
-   lv_obj_set_size(lab3, 30, 20);
-   lv_label_set_text(lab3, "3.0");
-   lv_obj_align(lab3, LV_ALIGN_LEFT_MID, -3, 3);    
+   // Y axis battery voltage scale
+   lv_obj_t *yvbat_scale = lv_scale_create(pwr_chart);
+   lv_scale_set_mode(yvbat_scale, LV_SCALE_MODE_VERTICAL_RIGHT);
+   lv_obj_set_size(yvbat_scale, 22, 140);
+   lv_scale_set_range(yvbat_scale, 0, 12); 
+   lv_scale_set_total_tick_count(yvbat_scale, 7);            // match point count
+   lv_scale_set_major_tick_every(yvbat_scale, 1);        
+   lv_scale_set_text_src(yvbat_scale, yvbat_scale_text);
+   lv_scale_set_label_show(yvbat_scale, true);
+   lv_obj_set_style_pad_hor(yvbat_scale, lv_chart_get_first_point_center_offset(pwr_chart), 0);
+   lv_obj_set_style_line_color(yvbat_scale, lv_palette_main(LV_PALETTE_BLUE), LV_PART_MAIN);   
+   lv_obj_set_style_line_color(yvbat_scale, lv_palette_main(LV_PALETTE_BLUE), LV_PART_INDICATOR);     
+   lv_obj_set_style_line_color(yvbat_scale, lv_palette_main(LV_PALETTE_BLUE), LV_PART_ITEMS);    
+   lv_obj_set_style_text_color(yvbat_scale, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);    
+   lv_obj_set_style_text_color(yvbat_scale, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_ITEMS);     
+   lv_obj_align(yvbat_scale, LV_ALIGN_LEFT_MID, -16, 0);  
 
-   lv_obj_t *lab6 = lv_label_create(pwr_chart);
-   lv_obj_set_size(lab6, 30, 20);
-   lv_label_set_text(lab6, "6.0");
-   lv_obj_align(lab6, LV_ALIGN_TOP_LEFT, -3, -8);  
+   // Y axis battery charge current scale
+   lv_obj_t *yichg_scale = lv_scale_create(pwr_chart);
+   lv_scale_set_mode(yichg_scale, LV_SCALE_MODE_VERTICAL_LEFT);
+   lv_obj_set_size(yichg_scale, 22, 140);
+   lv_scale_set_range(yichg_scale, 0, 12); 
+   lv_scale_set_total_tick_count(yichg_scale, 7);            // match point count
+   lv_scale_set_major_tick_every(yichg_scale, 1);        
+   lv_scale_set_text_src(yichg_scale, yichg_scale_text);
+   lv_scale_set_label_show(yichg_scale, true);
+   lv_obj_set_style_pad_hor(yichg_scale, lv_chart_get_first_point_center_offset(pwr_chart), 0);
+   lv_obj_set_style_line_color(yichg_scale, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);   
+   lv_obj_set_style_line_color(yichg_scale, lv_palette_main(LV_PALETTE_RED), LV_PART_INDICATOR);     
+   lv_obj_set_style_line_color(yichg_scale, lv_palette_main(LV_PALETTE_RED), LV_PART_ITEMS);    
+   lv_obj_set_style_text_color(yichg_scale, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);    
+   lv_obj_set_style_text_color(yichg_scale, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_ITEMS);     
+   lv_obj_align(yichg_scale, LV_ALIGN_RIGHT_MID, 16, 0);    
+
+   // lv_obj_t *lab3 = lv_label_create(pwr_chart);
+   // lv_obj_set_size(lab3, 30, 20);
+   // lv_label_set_text(lab3, "3.0");
+   // lv_obj_align(lab3, LV_ALIGN_LEFT_MID, -3, 3);    
+
+   // lv_obj_t *lab6 = lv_label_create(pwr_chart);
+   // lv_obj_set_size(lab6, 30, 20);
+   // lv_label_set_text(lab6, "6.0");
+   // lv_obj_align(lab6, LV_ALIGN_TOP_LEFT, -3, -8);  
    
-   batv_label = lv_label_create(scrn2);   
-   lv_obj_set_size(batv_label, 180, 25);
+   batv_label = lv_label_create(parent);   
+   lv_obj_set_size(batv_label, 180, 22);
    lv_obj_set_style_pad_ver(batv_label, 1, LV_PART_MAIN);
    lv_label_set_text(batv_label, "Battery: 0.00 Volts");
    lv_obj_set_style_text_color(batv_label, lv_color_white(), LV_PART_MAIN);
    lv_obj_align_to(batv_label, pwr_chart, LV_ALIGN_OUT_BOTTOM_LEFT, 5, 4);    
 
-   extv_label = lv_label_create(scrn2);   
-   lv_obj_set_size(extv_label, 180, 25);
-   lv_obj_set_style_pad_ver(extv_label, 1, LV_PART_MAIN);
-   lv_label_set_text(extv_label, "Chg Current: 000 mA");
-   lv_obj_set_style_text_color(extv_label, lv_color_white(), LV_PART_MAIN);   
-   lv_obj_align_to(extv_label, batv_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);    
+   ichg_label = lv_label_create(parent);   
+   lv_obj_set_size(ichg_label, 210, 22);
+   lv_obj_set_style_pad_ver(ichg_label, 1, LV_PART_MAIN);
+   lv_label_set_text(ichg_label, "Chg Current: 000 mA");
+   lv_obj_set_style_text_color(ichg_label, lv_color_white(), LV_PART_MAIN);   
+   lv_obj_align_to(ichg_label, batv_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);    
 
-   soc_label = lv_label_create(scrn2);   
-   lv_obj_set_size(soc_label, 160, 25);
+   soc_label = lv_label_create(parent);   
+   lv_obj_set_size(soc_label, 160, 22);
    lv_obj_set_style_pad_ver(soc_label, 1, LV_PART_MAIN);   
    lv_label_set_text(soc_label, "SOC: 000%");
    lv_obj_set_style_text_color(soc_label, lv_color_white(), LV_PART_MAIN);   
-   lv_obj_align_to(soc_label, extv_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);     
+   lv_obj_align_to(soc_label, ichg_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);     
 
-   time_to_charge_label = lv_label_create(scrn2);   
-   lv_obj_set_size(time_to_charge_label, 220, 25);
-   lv_obj_set_style_pad_ver(time_to_charge_label, 1, LV_PART_MAIN);      
-   lv_label_set_text(time_to_charge_label, "Time To Charge: 000 Min");
-   lv_obj_set_style_text_color(time_to_charge_label, lv_color_white(), LV_PART_MAIN);   
-   lv_obj_align_to(time_to_charge_label, soc_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);    
+   // time_to_charge_label = lv_label_create(parent);   
+   // lv_obj_set_size(time_to_charge_label, 220, 22);
+   // lv_obj_set_style_pad_ver(time_to_charge_label, 1, LV_PART_MAIN);      
+   // lv_label_set_text(time_to_charge_label, "Time To Charge: 000 Min");
+   // lv_obj_set_style_text_color(time_to_charge_label, lv_color_white(), LV_PART_MAIN);   
+   // lv_obj_align_to(time_to_charge_label, soc_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);    
 
-   chg_led = lv_led_create(scrn2);
+   chg_led = lv_led_create(parent);
    lv_obj_align(chg_led, LV_ALIGN_CENTER, 0, 0);
    lv_led_set_brightness(chg_led, 250);
    lv_led_on(chg_led);
-   lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_GREY));
-   lv_obj_align_to(chg_led, pwr_chart, LV_ALIGN_OUT_BOTTOM_RIGHT, -10, 10); 
+   lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_GREEN));
+   lv_obj_align_to(chg_led, ichg_label, LV_ALIGN_OUT_RIGHT_MID, 60, -4); 
+
+   static int32_t ext_sbuf[N_SAMPLES];          
+   static int32_t bat_sbuf[N_SAMPLES];  
+   for(i=0; i<N_SAMPLES; i++) {
+      ext_sbuf[i] = 0;
+      bat_sbuf[i] = 0;
+   }
 
    /**
     * @brief Create lambda (in-place) timer to send data to the chart
     */
-
    chart_timer = lv_timer_create([](lv_timer_t *timer) {
-      char buf[40];
-      static int32_t ext_sbuf[N_SAMPLES];          
-      static int32_t bat_sbuf[N_SAMPLES];    
-      static int16_t i = N_SAMPLES-1;  
+      char buf[40];  
+      static int16_t bufr_index = N_SAMPLES-1;  
       static bool bufr_full = false;
-
+      static uint16_t update_counter = 0;
       system_power_t *pwr_info = sys_utils.getPowerInfo();
-      bat_sbuf[i] = int(pwr_info->battery_volts * 1000);
-      ext_sbuf[i--] = int(pwr_info->charge_current);      
-      if(i < 0) {
-         i = N_SAMPLES-1;
-         bufr_full = true;
-      }
+      // bat_sbuf[i] = int(pwr_info->battery_volts * 1000);
+      // ext_sbuf[i--] = int(pwr_info->charge_current);      
+      // if(i < 0) {
+      //    i = N_SAMPLES-1;
+      //    bufr_full = true;
+      // }
 
       sprintf(buf, "Battery Volts: %.2f", pwr_info->battery_volts);
       lv_label_set_text(batv_label, buf);
 
       sprintf(buf, "Charge Current: %.0f mA", pwr_info->charge_current);
-      lv_label_set_text(extv_label, buf);    
+      lv_label_set_text(ichg_label, buf);    
       
       sprintf(buf, "SOC: %d%%", pwr_info->state_of_charge);
       lv_label_set_text(soc_label, buf);      
       
-      sprintf(buf, "Time To Charge: %03d Min", pwr_info->time_to_charge);
-      lv_label_set_text(time_to_charge_label, buf);  
-
-      // if(pwr_info->ext_power_volts < 4.25) {
-      //    lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_GREY));
-      // }
-      if(pwr_info->battery_volts <= 4.15) {
+      if(pwr_info->battery_volts < 4.08 || pwr_info->charge_current > 140) {
          lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_RED));
       } 
-      else if(pwr_info->battery_volts > 4.15) {
+      else if(pwr_info->battery_volts > 4.10 && pwr_info->charge_current < 140) {
          lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_GREEN));
       } 
 
-      lv_chart_set_ext_y_array(pwr_chart, ser1, &bat_sbuf[0]);  
-      lv_chart_set_ext_y_array(pwr_chart, ser2, &ext_sbuf[0]);       
+      if(++update_counter >= 9) {   // Update chart seconds
+         update_counter = 0;
+
+         bat_sbuf[bufr_index] = int(pwr_info->battery_volts * 1000);
+         ext_sbuf[bufr_index--] = int(pwr_info->charge_current);      
+         if(bufr_index < 0) {
+            bufr_index = N_SAMPLES-1;
+            bufr_full = true;
+         }         
+         lv_chart_set_ext_y_array(pwr_chart, ser1, &bat_sbuf[0]);  
+         lv_chart_set_ext_y_array(pwr_chart, ser2, &ext_sbuf[0]);       
+      }
 
    }, 1000, NULL); 
 
@@ -517,57 +511,89 @@ void setDefaultStyles()
 
 
 /********************************************************************
- * Return X/Y coords from a capacitive touch panel using a FT6336 controller
+ * @brief Message Box popup
  */
-uint8_t readFT6336(touch_point_t *points, uint8_t maxPoints, uint8_t scrn_rotate) 
+void openMessageBox(const char *title_text, const char *body_text, const char *btn1_text, 
+      uint32_t btn1_tag, const char *btn2_text, uint32_t btn2_tag, 
+      const char *btn3_text, uint32_t btn3_tag)
 {
-#define MAX_POINTS   13
-   uint16_t px, py;
+   msgbox1 = lv_msgbox_create(NULL);      // create a MODAL message box
 
-   Wire.beginTransmission(FT6336_ADDR);
-   Wire.write(0x02); // Start at Touch Points register
-   if (Wire.endTransmission(false) != 0) return 0;
+   // customize title area   
+   lv_msgbox_add_title(msgbox1, title_text);    // create title label first 
+   lv_obj_t *title_lbl = lv_msgbox_get_title(msgbox1);
+   lv_obj_set_style_text_font(title_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+   lv_obj_set_style_text_color(title_lbl, lv_color_hex(0x000000), LV_PART_MAIN);
+   lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+   lv_obj_set_style_bg_color(title_lbl, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_MAIN);
 
-   // Request 1 byte for count + 12 bytes for 2 points
-   Wire.requestFrom(FT6336_ADDR, MAX_POINTS);
-   if (Wire.available() < 7) return 0;    // must have at least 7 bytes to return
+   // Change the content area background and text color 
+   lv_obj_set_style_bg_color(msgbox1, lv_palette_darken(LV_PALETTE_GREY, 3), LV_PART_MAIN);
+   lv_obj_set_style_bg_opa(msgbox1, LV_OPA_COVER, LV_PART_MAIN);
+   lv_obj_set_style_text_color(msgbox1, lv_color_white(), LV_PART_MAIN);   
 
-   uint8_t touches = Wire.read(); // Number of active touches (max 2)
-   if(touches > maxPoints) touches = maxPoints;
+   lv_msgbox_add_text(msgbox1, body_text);
 
-   for (uint8_t i = 0; i < touches; i++) {
-      uint8_t xh = Wire.read();  // XH
-      uint8_t xl = Wire.read();  // XL
-      uint8_t yh = Wire.read();  // YH
-      uint8_t yl = Wire.read();  // YL
-      px = ((xh & 0x0F) << 8) | xl;
-      py = ((yh & 0x0F) << 8) | yl;
-      Wire.read();               // Weight (skip)
-      Wire.read();               // Area (skip)
-
-      // Correct X/Y coordinates depending on screen rotation
-      switch(scrn_rotate) {
-         case 0:
-            points[i].x = px;
-            points[i].y = py;
-            break;
-
-         case 1:
-            points[i].y = SCREEN_HEIGHT - px;
-            points[i].x = py;
-            break;
-
-         case 2:
-            points[i].x = SCREEN_WIDTH - px;
-            points[i].y = SCREEN_HEIGHT - py;
-            break;
-         
-         case 3:
-            points[i].x = SCREEN_WIDTH - py;         
-            points[i].y = px;      
-            break;
-      }
+   lv_obj_t * btn;
+   if(strlen(btn1_text) > 0) {
+      btn = lv_msgbox_add_footer_button(msgbox1, btn1_text);
+      lv_obj_set_user_data(btn, (void *)(uintptr_t)btn1_tag);
+      lv_obj_add_event_cb(btn, mbox_event_cb, LV_EVENT_CLICKED, NULL);   
    }
-   return touches;
+   if(strlen(btn2_text) > 0) {
+      btn = lv_msgbox_add_footer_button(msgbox1, btn2_text);
+      lv_obj_set_user_data(btn, (void *)(uintptr_t)btn2_tag);      
+      lv_obj_add_event_cb(btn, mbox_event_cb, LV_EVENT_CLICKED, NULL);   
+   }   
+   if(strlen(btn3_text) > 0) {
+      btn = lv_msgbox_add_footer_button(msgbox1, btn3_text);
+      lv_obj_set_user_data(btn, (void *)(uintptr_t)btn3_tag);      
+      lv_obj_add_event_cb(btn, mbox_event_cb, LV_EVENT_CLICKED, NULL);   
+   }      
 }
 
+
+/********************************************************************
+ * @brief Close an opened messagebox
+ */
+void closeMessageBox(void)
+{
+   if(msgbox1) {                          // is the msgbox open?
+      lv_msgbox_close(msgbox1);           // close (destroy) it
+      msgbox1 = nullptr;                  // mark it as unassigned
+   }
+}
+
+
+/********************************************************************
+ * @brief Message Box button event handler
+ */
+void mbox_event_cb(lv_event_t * e)
+{
+   lv_obj_t * btn = lv_event_get_target_obj(e);
+   lv_obj_t * label = lv_obj_get_child(btn, 0);
+   uint16_t op = (uint16_t)(uintptr_t)lv_obj_get_user_data(btn);
+   char *btn_text = lv_label_get_text(label);
+         // Serial.printf("Button %s clicked, user data=%d\n", btn_text, op);
+   msgBoxBtnTag = op;                     // save a copy of the butn tag 
+
+   switch(op) {
+      case MBOX_BTN_OK:
+      case MBOX_BTN_CANCEL:
+         closeMessageBox();
+         break;
+
+   }
+}
+
+
+/********************************************************************
+ * @brief Return message box button response.
+ * @note Returns MBOX_BTN_NONE if no activity.
+ */
+uint16_t getMessageBoxBtn(void)
+{
+   uint16_t ltag = msgBoxBtnTag;
+   msgBoxBtnTag = MBOX_BTN_NONE;
+   return ltag;
+}
