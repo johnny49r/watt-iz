@@ -11,13 +11,20 @@ the battery should be between 1500 and 3000 milliamp hours. Battery should be co
 the -BAT+ connector and the power select jumper should be set over the BAT position.
 
 ## Page 1: Demo Home Screen
-Introduction page. Swipe right to view next page.
+Introduction page. Swipe right to view the next page.
 
-## Page 2: Power Display
-The power page displays two values on a line chart. The first value (blue color) shows battery
-voltage. The second value (in red) shows the charge current. These values are updated once every 
-10 seconds. Battery voltage and current are only meaningful if a battery is properly connected and 
-the battery is being charged. 
+## Page 2: Battery Power Measurement
+Power measurements are derived from the system's Analog to Digital Converter (ADC). Battery 
+voltage is read directly while the charge current is calculated by measuring the voltage across
+the current mirror of the charge controller.
+
+Battery voltage and charge current are represented with two values displayed on the line chart. 
+The first value in the Y axis (blue color) shows the current battery voltage. 
+The second value in the Y axis (red color) shows the charge current. 
+The X axis of the chart represents the last 10 minutes of power samples updated once per second. 
+
+A charge 'LED' on the lower right of the page will be RED if the battery is being charged, and GREEN
+if the battery has reached 100% charge.
 
 ## Full Project
 The complete VSCode project with source code, documents, and configuration files are contained on the SD card 
