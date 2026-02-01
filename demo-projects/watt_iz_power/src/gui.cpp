@@ -251,7 +251,7 @@ void demo_page1(lv_obj_t *parent)
  */
 void demo_page2(lv_obj_t *parent)
 {
-#define N_SAMPLES    60   
+#define N_SAMPLES    600                  // chart x axis == 10 minutes, updated every 1 sec 
    char buf[40]; 
    int16_t i = 0;
 
@@ -263,14 +263,15 @@ void demo_page2(lv_obj_t *parent)
    pwr_chart = lv_chart_create(parent);      
    lv_obj_set_size(pwr_chart, 320, 160); //316, 120);    
    lv_chart_set_point_count(pwr_chart, N_SAMPLES);
-   lv_chart_set_range(pwr_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 6000);
-   lv_chart_set_range(pwr_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 1200);   
+   lv_chart_set_range(pwr_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 6000);  // 0 - 6V (in mv)
+   lv_chart_set_range(pwr_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 1200);   // 0 - 1.2A (in ma)
    lv_obj_set_style_radius(pwr_chart, 3, LV_PART_MAIN);
    lv_obj_set_style_bg_color(pwr_chart, lv_color_black(), LV_PART_MAIN);
    lv_obj_set_style_line_color(pwr_chart, lv_palette_darken(LV_PALETTE_GREY, 2), LV_PART_MAIN);
    lv_obj_set_style_border_color(pwr_chart, lv_palette_darken(LV_PALETTE_GREY, 1), LV_PART_MAIN);   
    lv_chart_set_div_line_count(pwr_chart, 7, 11);
    lv_chart_set_type(pwr_chart, LV_CHART_TYPE_LINE);   // Show lines and points too
+   lv_chart_set_update_mode(pwr_chart, LV_CHART_UPDATE_MODE_SHIFT);
    lv_obj_set_scrollbar_mode(pwr_chart, LV_SCROLLBAR_MODE_OFF);     // don't show scrollbars on non-scrolling pages
    lv_obj_clear_flag(pwr_chart, LV_OBJ_FLAG_SCROLLABLE);
    lv_obj_set_style_size(pwr_chart, 0, 0, LV_PART_INDICATOR);
@@ -326,16 +327,6 @@ void demo_page2(lv_obj_t *parent)
    lv_obj_set_style_text_color(yichg_scale, lv_palette_main(LV_PALETTE_GREY), LV_PART_INDICATOR);    
    lv_obj_set_style_text_color(yichg_scale, lv_palette_lighten(LV_PALETTE_GREY, 1), LV_PART_ITEMS);     
    lv_obj_align(yichg_scale, LV_ALIGN_RIGHT_MID, 16, 0);    
-
-   // lv_obj_t *lab3 = lv_label_create(pwr_chart);
-   // lv_obj_set_size(lab3, 30, 20);
-   // lv_label_set_text(lab3, "3.0");
-   // lv_obj_align(lab3, LV_ALIGN_LEFT_MID, -3, 3);    
-
-   // lv_obj_t *lab6 = lv_label_create(pwr_chart);
-   // lv_obj_set_size(lab6, 30, 20);
-   // lv_label_set_text(lab6, "6.0");
-   // lv_obj_align(lab6, LV_ALIGN_TOP_LEFT, -3, -8);  
    
    batv_label = lv_label_create(parent);   
    lv_obj_set_size(batv_label, 180, 22);
@@ -356,14 +347,7 @@ void demo_page2(lv_obj_t *parent)
    lv_obj_set_style_pad_ver(soc_label, 1, LV_PART_MAIN);   
    lv_label_set_text(soc_label, "SOC: 000%");
    lv_obj_set_style_text_color(soc_label, lv_color_white(), LV_PART_MAIN);   
-   lv_obj_align_to(soc_label, ichg_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);     
-
-   // time_to_charge_label = lv_label_create(parent);   
-   // lv_obj_set_size(time_to_charge_label, 220, 22);
-   // lv_obj_set_style_pad_ver(time_to_charge_label, 1, LV_PART_MAIN);      
-   // lv_label_set_text(time_to_charge_label, "Time To Charge: 000 Min");
-   // lv_obj_set_style_text_color(time_to_charge_label, lv_color_white(), LV_PART_MAIN);   
-   // lv_obj_align_to(time_to_charge_label, soc_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);    
+   lv_obj_align_to(soc_label, ichg_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);      
 
    chg_led = lv_led_create(parent);
    lv_obj_align(chg_led, LV_ALIGN_CENTER, 0, 0);
@@ -372,28 +356,16 @@ void demo_page2(lv_obj_t *parent)
    lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_GREEN));
    lv_obj_align_to(chg_led, ichg_label, LV_ALIGN_OUT_RIGHT_MID, 60, -4); 
 
-   static int32_t ext_sbuf[N_SAMPLES];          
-   static int32_t bat_sbuf[N_SAMPLES];  
-   for(i=0; i<N_SAMPLES; i++) {
-      ext_sbuf[i] = 0;
-      bat_sbuf[i] = 0;
-   }
+   // Hide all series points to start with
+   lv_chart_set_all_values(pwr_chart, ser1, LV_CHART_POINT_NONE);
+   lv_chart_set_all_values(pwr_chart, ser2, LV_CHART_POINT_NONE);   
 
    /**
     * @brief Create lambda (in-place) timer to send data to the chart
     */
    chart_timer = lv_timer_create([](lv_timer_t *timer) {
       char buf[40];  
-      static int16_t bufr_index = N_SAMPLES-1;  
-      static bool bufr_full = false;
-      static uint16_t update_counter = 0;
       system_power_t *pwr_info = sys_utils.getPowerInfo();
-      // bat_sbuf[i] = int(pwr_info->battery_volts * 1000);
-      // ext_sbuf[i--] = int(pwr_info->charge_current);      
-      // if(i < 0) {
-      //    i = N_SAMPLES-1;
-      //    bufr_full = true;
-      // }
 
       sprintf(buf, "Battery Volts: %.2f", pwr_info->battery_volts);
       lv_label_set_text(batv_label, buf);
@@ -404,26 +376,16 @@ void demo_page2(lv_obj_t *parent)
       sprintf(buf, "SOC: %d%%", pwr_info->state_of_charge);
       lv_label_set_text(soc_label, buf);      
       
+      // Color charge LED red if charging, green if not.
       if(pwr_info->battery_volts < 4.08 || pwr_info->charge_current > 140) {
          lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_RED));
       } 
       else if(pwr_info->battery_volts > 4.10 && pwr_info->charge_current < 140) {
          lv_led_set_color(chg_led, lv_palette_main(LV_PALETTE_GREEN));
       } 
-
-      if(++update_counter >= 9) {   // Update chart seconds
-         update_counter = 0;
-
-         bat_sbuf[bufr_index] = int(pwr_info->battery_volts * 1000);
-         ext_sbuf[bufr_index--] = int(pwr_info->charge_current);      
-         if(bufr_index < 0) {
-            bufr_index = N_SAMPLES-1;
-            bufr_full = true;
-         }         
-         lv_chart_set_ext_y_array(pwr_chart, ser1, &bat_sbuf[0]);  
-         lv_chart_set_ext_y_array(pwr_chart, ser2, &ext_sbuf[0]);       
-      }
-
+      // Add data points to the chart 
+      lv_chart_set_next_value(pwr_chart, ser1, int(pwr_info->battery_volts * 1000));
+      lv_chart_set_next_value(pwr_chart, ser2, int(pwr_info->charge_current));         
    }, 1000, NULL); 
 
 }
