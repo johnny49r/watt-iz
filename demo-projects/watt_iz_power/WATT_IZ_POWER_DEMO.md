@@ -10,6 +10,15 @@ on a line chart.
 the battery should be between 1500 and 3000 milliamp hours. Battery should be connected to
 the -BAT+ connector and the power select jumper should be set over the BAT position.
 
+## How to Download Demo Firmware
+Demo's and apps can be downloaded using the SD card without the need for a development 
+system, download cable, etc. Perform the following steps:
+1) Turn Watt-IZ power off and remove the SD card.
+2) Put the SD card into a PC or suitable phone that can edit SD card files.
+3) Copy the 'firmware.bin' file found in the github demo repository to the '/update' folder 
+on the SD card. Example: "/update/firmware.bin".
+4) Replace the SD card in the Watt-IZ, power up, and follow directions on the pop-up menu.
+
 ## Page 1: Demo Home Screen
 Introduction page. Swipe right to view the next page.
 
