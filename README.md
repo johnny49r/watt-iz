@@ -150,7 +150,7 @@ An openAI API key is required to access Chat GPT services. Use the following ste
 ### More Information
 For additional information, read the file "Watt-IZ User Manual.pdf" contained on the SD card in each Watt-IZ basic kit.
 
-### To Purchase
+### To Purchase Watt-IZ
 Go here: [https://www.tindie.com/products/abbycus/watt-iz-speech-enabled-embedded-hardware/]
 
 ## MIT License
