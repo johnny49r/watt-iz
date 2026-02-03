@@ -1,5 +1,5 @@
 # Watt-IZ How to Acquire and Use API Keys
-This document shows how to set up a developer account and obtain an API key for 
+This document shows how to set up a user account and obtain an API key for 
 use with the following cloud speech services:
 - Google Speech To Text (STT).
 - Google Text To Speech (TTS).
