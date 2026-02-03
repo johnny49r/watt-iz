@@ -1,11 +1,10 @@
 # Watt-IZ Speech To Text Demo Project
-The goal of this example project is to demonstrate Speech-to-Text feature of the Watt-IZ Speech 
+The goal of this example project is to demonstrate Speech-to-Text (STT) feature of the Watt-IZ Speech 
 Enabled Development Board. 
 
-This demo makes an audio recording of up to 10 seconds. The recorded audio is saved as a file
-on the SD card named "/rec_test.wav". 
-The audio is simultaneously sent to google's Speech-to-Text transcribe service and a text response
-will occur shortly after. the audio recording has terminated.
+This demo utilizes googles Speech-to-Text API to convert voice audio to text. The demo makes 
+an audio recording of up to 10 seconds. The recorded audio is saved as a file on the SD card 
+named "/rec_test.wav". See **Running the Demo** below.
 
 ## Hardware Requirements
 - Functional Watt-IZ hardware with the following working peripherals:
@@ -31,13 +30,14 @@ device will have code necessary to download new firmware. Perform the following:
 will be a solid bright white indicating that the device is connected to the internet. If the
 WiFi icon does not indicate connection, check your WiFi SSID (router name) and PASSWORD in the
 ***wattiz_config.json*** file.
-2) Press the 'Speak' button and say a few words or a sentence. The demo takes a 10 second audio 
-recording after you begin speaking. You can end speaking by pressing the 'Speak' button again or 
-simply stop speaking for approximately 2 seconds. 
-
-The response text should appear shortly in the text box on the display. If this isn't working, 
-check that the API key string in the ***wattiz_config.json*** file is correct and that you have 
-the Speech-to-Text option enabled in your google API account.
+2) Press the 'Speak' button and say a few words or a sentence. The 'Speak' button will now show
+'Stop'. The demo takes a 10 second audio recording which starts after you begin speaking. You 
+can end speaking by pressing 'Stop' or simply stop speaking for approximately 2 seconds. The
+recording will always end a maximum of 10 seconds after it starts.
+Voice audio is simultaneously sent to googles STT service and a text response should appear shortly 
+in the text box on the display. If this isn't working, check that the API key string in the 
+***wattiz_config.json*** file is correct and that you have the Speech-to-Text option enabled 
+in your google API account.
 
 A replay of your original voice is also presented to validate the text response.
 
