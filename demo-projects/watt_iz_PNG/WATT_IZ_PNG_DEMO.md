@@ -9,6 +9,12 @@ image. **Note:** PNG files larger than 64x64 pixels might not render due to limi
     - Installed 32GB SD card with wattiz_config.json file containing google API key.
 
 ## LVGL Configuration
+Configuration directions here assume you have installed this project in the Visual Studio Code / PlatformIO 
+development environment. 
+When you first install a new project in vscode, all dependent libraries will be installed. When LVGL is first 
+installed the file **lv_conf.h** will be missing. Find the **lv_conf.h.copy** in the project include folder 
+and copy to the lvgl directory in .pio/libdeps/lvgl. Remove the 'copy' suffix (result = lv_conf.h).
+
 Open the **'lv_conf.h'** file in the .pio/libdeps/lvgl project folder and edit as shown:
 - #define LV_USE_LODEPNG 1      // enable png decoder
 - #define LV_MEM_SIZE (128 * 1024U)  // increase drawing memory to 128K
