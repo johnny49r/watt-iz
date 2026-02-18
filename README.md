@@ -102,7 +102,12 @@ require a connected speaker while others may require an API key for speech conve
 ### Intercom Demo (Direct Peer-to-Peer Communication)
   - Uses broadcast to discover other devices.
   - Uses MAC addressing for peer-to-peer communication.
-  - Demonstrates writing and reading audio streams.
+  - Demonstrates sending and receiving audio streams.
+### FFT and Audio Filtering
+  - Basic display of converting a time domain signal (sinewave) to it's frequency domain.
+  - Demonstrates use of FFT to display signal energy over the audio spectrum.
+  - Plots the effect of several signal filter types using a whitenoise data source.
+  - Shows the effects of filter Q factor over bandwidth and corner frequency.
 ### Intent Classification / Command Parsing
   - Break speech into intent – action – target categories (*** coming soon).
 
